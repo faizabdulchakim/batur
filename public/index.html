@@ -3,10 +3,22 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>XiaoZhi (小智 AI) - Device Simulator & Voice Chatbot</title>
+  <title>XiaoZhi (小智 AI) - 3D Digital Human Assistant (BATUR)</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- Three.js and TalkingHead.js Import Map -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js/+esm",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/",
+      "talkinghead": "https://cdn.jsdelivr.net/gh/met4citizen/TalkingHead@1.7/modules/talkinghead.mjs"
+    }
+  }
+  </script>
+
   <style>
     :root {
       --bg-color: #0d1117;
@@ -43,7 +55,7 @@
 
     .container {
       width: 100%;
-      max-width: 980px;
+      max-width: 1100px;
       display: flex;
       flex-direction: column;
       gap: 20px;
@@ -89,6 +101,12 @@
       color: var(--text-dim);
     }
 
+    .header-badges {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
     .status-badge {
       display: flex;
       align-items: center;
@@ -131,11 +149,11 @@
 
     .main-grid {
       display: grid;
-      grid-template-columns: 340px 1fr;
+      grid-template-columns: 440px 1fr;
       gap: 20px;
     }
 
-    @media (max-width: 800px) {
+    @media (max-width: 960px) {
       .main-grid {
         grid-template-columns: 1fr;
       }
@@ -152,17 +170,117 @@
       gap: 16px;
     }
 
-    /* OLED Screen Section */
-    .device-screen-box {
-      background: var(--oled-bg);
-      border: 3px solid #30363d;
+    /* Avatar View Selector Tabs */
+    .view-tabs {
+      display: flex;
+      gap: 8px;
+      background: rgba(0, 0, 0, 0.4);
+      padding: 4px;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+    }
+
+    .view-tab {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: var(--text-dim);
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .view-tab.active {
+      background: var(--accent);
+      color: #0d1117;
+      box-shadow: 0 0 10px var(--accent-glow);
+    }
+
+    /* 3D Avatar Container */
+    .avatar-3d-box {
+      width: 100%;
+      height: 380px;
+      background: radial-gradient(circle at center, #1b2430 0%, #090d13 100%);
+      border: 2px solid #30363d;
       border-radius: 18px;
-      padding: 24px 20px;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #avatarNode {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .avatar-loading {
+      position: absolute;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      min-height: 190px;
+      gap: 12px;
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 500;
+      background: rgba(9, 13, 19, 0.85);
+      top: 0; left: 0; right: 0; bottom: 0;
+      z-index: 10;
+      transition: opacity 0.4s;
+    }
+
+    .spinner {
+      width: 36px;
+      height: 36px;
+      border: 3px solid rgba(88, 166, 255, 0.2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .emotion-badge {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      background: rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(8px);
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--oled-glow);
+      border: 1px solid rgba(0, 240, 255, 0.3);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      z-index: 5;
+    }
+
+    /* OLED Screen Fallback View */
+    .device-screen-box {
+      background: var(--oled-bg);
+      border: 3px solid #30363d;
+      border-radius: 18px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 380px;
       box-shadow: inset 0 0 20px rgba(0, 240, 255, 0.08);
       position: relative;
       overflow: hidden;
@@ -170,9 +288,7 @@
 
     .oled-glass {
       position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
+      top: 0; left: 0; right: 0;
       height: 45%;
       background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, transparent 100%);
       pointer-events: none;
@@ -180,36 +296,27 @@
 
     .avatar-eyes {
       display: flex;
-      gap: 32px;
-      margin-bottom: 14px;
+      gap: 36px;
+      margin-bottom: 16px;
       transition: all 0.3s ease;
     }
 
     .eye {
-      width: 32px;
-      height: 44px;
+      width: 38px;
+      height: 52px;
       background: var(--oled-glow);
-      border-radius: 16px;
-      box-shadow: 0 0 18px var(--oled-glow);
+      border-radius: 18px;
+      box-shadow: 0 0 20px var(--oled-glow);
       transition: all 0.2s ease;
     }
 
-    .avatar-eyes.blink .eye {
-      height: 4px;
-      margin-top: 20px;
-    }
-
-    .avatar-eyes.happy .eye {
-      border-radius: 16px 16px 0 0;
-      height: 22px;
-    }
-
+    .avatar-eyes.blink .eye { height: 4px; margin-top: 24px; }
+    .avatar-eyes.happy .eye { border-radius: 18px 18px 0 0; height: 26px; }
     .avatar-eyes.listening .eye {
       border-radius: 50%;
-      height: 38px;
-      width: 38px;
+      height: 44px; width: 44px;
       background: #ea4a5a;
-      box-shadow: 0 0 20px #ea4a5a;
+      box-shadow: 0 0 22px #ea4a5a;
       animation: listenPulse 0.7s infinite alternate;
     }
 
@@ -218,10 +325,7 @@
       to { transform: scale(1.18); box-shadow: 0 0 28px #ea4a5a; }
     }
 
-    .avatar-eyes.talking .eye {
-      animation: eyeBounce 0.35s infinite alternate;
-    }
-
+    .avatar-eyes.talking .eye { animation: eyeBounce 0.35s infinite alternate; }
     @keyframes eyeBounce {
       from { transform: scaleY(0.8); }
       to { transform: scaleY(1.35); }
@@ -229,89 +333,63 @@
 
     .oled-text {
       font-family: 'JetBrains Mono', monospace;
-      font-size: 13px;
+      font-size: 14px;
       color: var(--oled-glow);
       text-align: center;
       text-shadow: 0 0 8px rgba(0, 240, 255, 0.6);
-      min-height: 20px;
+      min-height: 22px;
     }
 
-    .info-list {
+    /* Model Selection Row */
+    .model-selector-row {
       display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    .info-row {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
+      gap: 8px;
+      align-items: center;
       background: rgba(255, 255, 255, 0.02);
-      padding: 10px 12px;
-      border-radius: 8px;
-      border: 1px solid rgba(255, 255, 255, 0.04);
+      padding: 8px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
     }
 
-    .info-label {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: var(--text-dim);
-    }
-
-    .info-val {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 13px;
-      word-break: break-all;
+    .model-select {
+      flex: 1;
+      background: #0d1117;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
       color: var(--text-main);
+      padding: 6px 10px;
+      font-size: 12px;
+      outline: none;
+      cursor: pointer;
     }
 
     .code-box {
       background: linear-gradient(135deg, rgba(88, 166, 255, 0.12), rgba(137, 87, 229, 0.18));
       border: 1px solid var(--accent);
       border-radius: 12px;
-      padding: 14px;
+      padding: 12px;
       text-align: center;
     }
 
     .code-box-title {
-      font-size: 12px;
+      font-size: 11px;
       color: var(--accent);
       font-weight: 600;
-      margin-bottom: 6px;
+      margin-bottom: 4px;
     }
 
     .code-digits {
       font-family: 'JetBrains Mono', monospace;
-      font-size: 28px;
+      font-size: 24px;
       font-weight: 700;
-      letter-spacing: 6px;
+      letter-spacing: 4px;
       color: #fff;
       text-shadow: 0 0 12px var(--accent);
     }
 
-    .btn-console {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      background: #238636;
-      color: #fff;
-      text-decoration: none;
-      padding: 11px;
-      border-radius: 8px;
-      font-size: 13px;
-      font-weight: 600;
-      transition: background 0.2s;
-    }
-
-    .btn-console:hover {
-      background: #2ea043;
-    }
-
     /* Chat Section */
     .chat-container {
-      height: 580px;
+      height: 640px;
       display: flex;
       flex-direction: column;
     }
@@ -325,10 +403,7 @@
       gap: 12px;
     }
 
-    .chat-messages::-webkit-scrollbar {
-      width: 6px;
-    }
-
+    .chat-messages::-webkit-scrollbar { width: 6px; }
     .chat-messages::-webkit-scrollbar-thumb {
       background: rgba(255, 255, 255, 0.1);
       border-radius: 3px;
@@ -444,7 +519,6 @@
       color: #fff;
     }
 
-    /* Microphone Button */
     .btn-mic {
       background: #21262d;
       color: var(--text-main);
@@ -454,7 +528,6 @@
       padding: 0;
       border-radius: 10px;
       font-size: 18px;
-      position: relative;
     }
 
     .btn-mic:hover {
@@ -524,55 +597,72 @@
   <div class="container">
     <header>
       <div class="brand">
-        <div class="logo-badge">🤖</div>
+        <div class="logo-badge">🧑</div>
         <div>
-          <h1>XiaoZhi Device Simulator (BATUR)</h1>
-          <p>ESP32 AI Voice Assistant with Real Opus Audio</p>
+          <h1>XiaoZhi 3D Digital Human (BATUR)</h1>
+          <p>Real-time Talking Head 3D Avatar with Authentic Voice & Lip-Sync</p>
         </div>
       </div>
-      <div class="status-badge" id="statusBadge">
-        <span class="status-dot connecting" id="statusDot"></span>
-        <span id="statusText">Connecting...</span>
+      <div class="header-badges">
+        <span class="audio-badge">✨ 3D Lip-Sync Ready</span>
+        <div class="status-badge" id="statusBadge">
+          <span class="status-dot connecting" id="statusDot"></span>
+          <span id="statusText">Connecting...</span>
+        </div>
       </div>
     </header>
 
     <div class="main-grid">
-      <!-- Left Column: Hardware & Activation -->
+      <!-- Left Column: 3D Face & OLED Avatar -->
       <div class="card">
-        <!-- OLED Screen -->
-        <div class="device-screen-box">
+        <!-- View Mode Switcher -->
+        <div class="view-tabs">
+          <button id="tab3D" class="view-tab active" onclick="switchView('3d')">
+            🧑 3D Human Avatar
+          </button>
+          <button id="tabOled" class="view-tab" onclick="switchView('oled')">
+            📺 Classic OLED Face
+          </button>
+        </div>
+
+        <!-- 3D Avatar Viewport -->
+        <div class="avatar-3d-box" id="box3D">
+          <div class="emotion-badge" id="emotionBadge">
+            <span id="emotionIcon">😊</span>
+            <span id="emotionText">NEUTRAL</span>
+          </div>
+          <div id="avatarNode"></div>
+          <div class="avatar-loading" id="avatarLoading">
+            <div class="spinner"></div>
+            <span>Memuat Avatar 3D...</span>
+          </div>
+        </div>
+
+        <!-- OLED Screen Fallback View -->
+        <div class="device-screen-box" id="boxOled" style="display: none;">
           <div class="oled-glass"></div>
           <div class="avatar-eyes" id="avatarEyes">
             <div class="eye"></div>
             <div class="eye"></div>
           </div>
-          <div class="oled-text" id="oledText">XIAOZHI AI IDLE</div>
+          <div class="oled-text" id="oledText">XIAOZHI READY</div>
+        </div>
+
+        <!-- Avatar Model Selector -->
+        <div class="model-selector-row">
+          <span style="font-size: 12px; color: var(--text-dim);">Pilih Karakter:</span>
+          <select id="avatarModelSelect" class="model-select" onchange="changeAvatarModel(this.value)">
+            <option value="male_casual" selected>👨 Alex (Casual Male)</option>
+            <option value="female_casual">👩 Sarah (Casual Female)</option>
+            <option value="male_business">👔 James (Business Male)</option>
+            <option value="female_business">💼 Claire (Business Female)</option>
+          </select>
         </div>
 
         <!-- 6 Digit Activation Code -->
         <div class="code-box">
           <div class="code-box-title">🔑 KODE AKTIVASI DEVICE</div>
           <div class="code-digits" id="codeDigits">------</div>
-        </div>
-
-        <a href="https://xiaozhi.me/" target="_blank" class="btn-console">
-          🔗 Buka Console xiaozhi.me & Pair
-        </a>
-
-        <!-- Device Info -->
-        <div class="info-list">
-          <div class="info-row">
-            <span class="info-label">MAC Address (Device ID)</span>
-            <span class="info-val" id="infoMac">Loading...</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">Client ID (UUID)</span>
-            <span class="info-val" id="infoClientId">Loading...</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">Session ID</span>
-            <span class="info-val" id="infoSessionId">None</span>
-          </div>
         </div>
       </div>
 
@@ -585,7 +675,6 @@
             <button class="btn btn-secondary" onclick="reconnectWS()">🔄 Reconnect</button>
           </div>
           <div class="options-group">
-            <span class="audio-badge">🔊 Suara Asli XiaoZhi</span>
             <select id="micLangSelect" class="lang-select" title="Pilih Bahasa Audio">
               <option value="id" selected>🇮🇩 ID</option>
               <option value="en">🇺🇸 EN</option>
@@ -596,7 +685,7 @@
 
         <div class="chat-messages" id="chatMessages">
           <div class="msg-bubble msg-system">
-            👋 Selamat datang! Klik tombol mikrofon <b>🎙️ untuk bicara langsung lewat Mic PC</b> atau ketik pertanyaan di kotak chat.
+            👋 Selamat datang! Avatar 3D terhubung langsung dengan backend XiaoZhi. Silakan gunakan <b>🎙️ Mic PC</b> atau ketik pertanyaan di kotak chat untuk melihat animasi bibir (*Lip-Sync*) dan mimik wajahnya!
           </div>
         </div>
 
@@ -611,12 +700,20 @@
     </div>
   </div>
 
-  <script>
+  <!-- Main Interactive Script (ES Module with TalkingHead) -->
+  <script type="module">
+    import { TalkingHead } from "talkinghead";
+
     let ws = null;
     let config = null;
     let currentSessionId = null;
     let ttsTimer = null;
     let currentAiBubble = null;
+    let lastSentText = null;
+
+    // TalkingHead 3D Avatar Instance
+    let head = null;
+    let isAvatarReady = false;
 
     // Web Audio Variables for Real Opus Playback (24kHz Mono)
     let playCtx = null;
@@ -628,22 +725,126 @@
     let micProcessor = null;
     let isRecording = false;
 
-    const statusBadge = document.getElementById('statusBadge');
+    // DOM Elements
     const statusDot = document.getElementById('statusDot');
     const statusText = document.getElementById('statusText');
     const oledText = document.getElementById('oledText');
     const avatarEyes = document.getElementById('avatarEyes');
     const codeDigits = document.getElementById('codeDigits');
-    const infoMac = document.getElementById('infoMac');
-    const infoClientId = document.getElementById('infoClientId');
-    const infoSessionId = document.getElementById('infoSessionId');
     const chatMessages = document.getElementById('chatMessages');
     const chatInput = document.getElementById('chatInput');
     const btnSend = document.getElementById('btnSend');
     const btnMic = document.getElementById('btnMic');
     const micLangSelect = document.getElementById('micLangSelect');
+    const avatarLoading = document.getElementById('avatarLoading');
+    const emotionBadge = document.getElementById('emotionBadge');
+    const emotionIcon = document.getElementById('emotionIcon');
+    const emotionText = document.getElementById('emotionText');
+    const box3D = document.getElementById('box3D');
+    const boxOled = document.getElementById('boxOled');
+    const tab3D = document.getElementById('tab3D');
+    const tabOled = document.getElementById('tabOled');
 
-    // Inisialisasi Audio Context untuk Playback Suara Asli XiaoZhi
+    const AVATAR_MODELS = {
+      male_casual: "https://models.readyplayer.me/64b7a6f086760d62bf9e471e.glb?morphTargets=ARKit,Oculus+Visemes",
+      female_casual: "https://models.readyplayer.me/64b7a65086760d62bf9e4708.glb?morphTargets=ARKit,Oculus+Visemes",
+      male_business: "https://models.readyplayer.me/64c2225f190eec26f3cb4115.glb?morphTargets=ARKit,Oculus+Visemes",
+      female_business: "https://models.readyplayer.me/64c222bb190eec26f3cb412f.glb?morphTargets=ARKit,Oculus+Visemes"
+    };
+
+    // ==========================================
+    // 🧑 3D TALKING HEAD AVATAR INITIALIZATION
+    // ==========================================
+    async function init3DAvatar(modelKey = "male_casual") {
+      avatarLoading.style.display = 'flex';
+      avatarLoading.style.opacity = '1';
+
+      try {
+        const nodeAvatar = document.getElementById('avatarNode');
+        nodeAvatar.innerHTML = '';
+
+        head = new TalkingHead(nodeAvatar, {
+          avatarMood: "neutral",
+          cameraView: "head",
+          cameraDistance: 0.8,
+          cameraY: 0.05,
+          cameraRotateSpeed: 0.5,
+          markedOptions: { mangle: false, headerIds: false }
+        });
+
+        const avatarUrl = AVATAR_MODELS[modelKey] || AVATAR_MODELS.male_casual;
+        console.log(`🌐 Loading Ready Player Me 3D Avatar: ${avatarUrl}`);
+
+        await head.showAvatar({
+          url: avatarUrl,
+          body: modelKey.startsWith('f') ? 'F' : 'M',
+          avatarMood: "neutral"
+        });
+
+        isAvatarReady = true;
+        avatarLoading.style.opacity = '0';
+        setTimeout(() => { avatarLoading.style.display = 'none'; }, 400);
+        console.log('✅ 3D Avatar Ready and Rendered!');
+        showSystemMsg('🧑 Avatar 3D siap berinteraksi!');
+      } catch (err) {
+        console.error('❌ Failed to load 3D Avatar:', err);
+        avatarLoading.innerHTML = `<span style="color:#f85149">Gagal memuat 3D (${err.message}).<br>Beralih ke mode OLED...</span>`;
+        setTimeout(() => switchView('oled'), 2500);
+      }
+    }
+
+    window.changeAvatarModel = async function(modelKey) {
+      if (!head) return;
+      isAvatarReady = false;
+      await init3DAvatar(modelKey);
+    };
+
+    window.switchView = function(mode) {
+      if (mode === '3d') {
+        box3D.style.display = 'flex';
+        boxOled.style.display = 'none';
+        tab3D.classList.add('active');
+        tabOled.classList.remove('active');
+      } else {
+        box3D.style.display = 'none';
+        boxOled.style.display = 'flex';
+        tabOled.classList.add('active');
+        tab3D.classList.remove('active');
+      }
+    };
+
+    // Update Avatar Emotion and Expression
+    function setAvatarEmotion(emotion, text) {
+      const emo = (emotion || 'neutral').toLowerCase();
+      let icon = '😊';
+      let label = 'NEUTRAL';
+      let mood = 'neutral';
+
+      if (emo.includes('happy') || emo.includes('senang') || emo.includes('gembira')) {
+        icon = '😄'; label = 'HAPPY'; mood = 'happy';
+      } else if (emo.includes('think') || emo.includes('pikir')) {
+        icon = '🤔'; label = 'THINKING'; mood = 'thinking';
+      } else if (emo.includes('surpris') || emo.includes('kaget')) {
+        icon = '😲'; label = 'SURPRISED'; mood = 'surprised';
+      } else if (emo.includes('sad') || emo.includes('sedih')) {
+        icon = '😢'; label = 'SAD'; mood = 'sad';
+      }
+
+      emotionIcon.innerText = icon;
+      emotionText.innerText = label;
+
+      if (head && isAvatarReady) {
+        try { head.setMood(mood); } catch (e) {}
+      }
+
+      // OLED Fallback
+      avatarEyes.className = 'avatar-eyes ' + (mood || '');
+      if (text) oledText.innerText = text.toUpperCase();
+    }
+
+    // ==========================================
+    // 🔊 AUDIO PLAYBACK & 3D LIP-SYNC
+    // ==========================================
     function initPlaybackAudio() {
       if (!playCtx) {
         playCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
@@ -654,7 +855,6 @@
       }
     }
 
-    // Memutar potongan PCM biner (24kHz 16-bit Int16) asli dari server XiaoZhi
     function playPCMChunk(arrayBuffer) {
       initPlaybackAudio();
 
@@ -676,23 +876,26 @@
       source.start(startTime);
       nextPlayTime = startTime + audioBuffer.duration;
 
-      setScreenEmotion('talking', 'SPEAKING...');
+      // OLED animation
+      avatarEyes.classList.add('talking');
       clearTimeout(ttsTimer);
       ttsTimer = setTimeout(() => {
-        setScreenEmotion('', 'IDLE');
+        avatarEyes.classList.remove('talking');
+        setAvatarEmotion('neutral', 'READY');
       }, 1000);
     }
 
-    // Mengaktifkan Mikrofon PC dan Streaming 16kHz PCM ke WebSocket
-    async function toggleMicrophone() {
+    // ==========================================
+    // 🎙️ MICROPHONE RECORDING & STREAMING
+    // ==========================================
+    window.toggleMicrophone = async function() {
       initPlaybackAudio();
-
       if (isRecording) {
         stopMicrophone();
       } else {
         await startMicrophone();
       }
-    }
+    };
 
     async function startMicrophone() {
       if (!ws || ws.readyState !== WebSocket.OPEN) {
@@ -702,13 +905,7 @@
 
       try {
         micStream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            sampleRate: 16000,
-            channelCount: 1,
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true
-          }
+          audio: { sampleRate: 16000, channelCount: 1, echoCancellation: true, noiseSuppression: true }
         });
 
         micCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
@@ -718,15 +915,11 @@
         isRecording = true;
         btnMic.classList.add('recording');
         btnMic.innerText = '🔴';
-        setScreenEmotion('listening', 'MENDENGARKAN...');
+        setAvatarEmotion('thinking', 'MENDENGARKAN...');
         chatInput.placeholder = 'Sedang mendengarkan suara Anda... (Klik mic lagi untuk selesai)';
 
-        // 1. Kirim sinyal start listening
         ws.send(JSON.stringify({ type: 'abort', session_id: currentSessionId }));
-        ws.send(JSON.stringify({ type: 'listen', state: 'detect', text: 'xiaozhi' }));
-        setTimeout(() => {
-          ws.send(JSON.stringify({ type: 'listen', state: 'start', mode: 'manual' }));
-        }, 100);
+        ws.send(JSON.stringify({ type: 'listen', state: 'start', mode: 'manual' }));
 
         micProcessor.onaudioprocess = (e) => {
           if (!isRecording) return;
@@ -736,7 +929,6 @@
             const s = Math.max(-1, Math.min(1, float32[i]));
             int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
           }
-          // Kirim binary PCM 16kHz ke server
           if (ws && ws.readyState === WebSocket.OPEN) {
             ws.send(int16.buffer);
           }
@@ -744,7 +936,6 @@
 
         source.connect(micProcessor);
         micProcessor.connect(micCtx.destination);
-
       } catch (err) {
         console.error('Mic Error:', err);
         showSystemMsg('❌ Gagal mengakses mikrofon: ' + err.message);
@@ -759,58 +950,34 @@
       btnMic.innerText = '🎙️';
       chatInput.placeholder = 'Ketik atau klik tombol Mic untuk bicara...';
 
-      if (micProcessor) {
-        micProcessor.disconnect();
-        micProcessor = null;
-      }
-      if (micStream) {
-        micStream.getTracks().forEach(t => t.stop());
-        micStream = null;
-      }
-      if (micCtx) {
-        micCtx.close();
-        micCtx = null;
-      }
+      if (micProcessor) { micProcessor.disconnect(); micProcessor = null; }
+      if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+      if (micCtx) { micCtx.close(); micCtx = null; }
 
-      setScreenEmotion('', 'MEMPROSES...');
-
-      // 2. Kirim sinyal stop listening ke XiaoZhi
+      setAvatarEmotion('thinking', 'MEMPROSES...');
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: 'listen', state: 'stop' }));
       }
     }
 
-    // Fetch config
+    // ==========================================
+    // 🌐 WEBSOCKET PROXY CONNECTION
+    // ==========================================
     async function loadConfig() {
       try {
         const res = await fetch('/api/config');
         if (res.ok) {
           config = await res.json();
-          infoMac.innerText = config.mac_address || '-';
-          infoClientId.innerText = config.client_id || '-';
           codeDigits.innerText = config.activation_code || '------';
           oledText.innerText = `CODE: ${config.activation_code || 'READY'}`;
           connectLocalWebSocket();
         } else {
-          showSystemMsg('⚠️ config.json belum ada. Silakan jalankan `npm run init` terlebih dahulu.');
+          showSystemMsg('⚠️ config.json belum ada. Jalankan `npm run init` terlebih dahulu.');
         }
       } catch (e) {
         showSystemMsg('❌ Gagal memuat konfigurasi: ' + e.message);
       }
     }
-
-    function setScreenEmotion(emotion, text) {
-      avatarEyes.className = 'avatar-eyes ' + (emotion || '');
-      if (text) oledText.innerText = text.toUpperCase();
-    }
-
-    // Auto blink
-    setInterval(() => {
-      if (!avatarEyes.classList.contains('talking') && !avatarEyes.classList.contains('listening')) {
-        avatarEyes.classList.add('blink');
-        setTimeout(() => avatarEyes.classList.remove('blink'), 200);
-      }
-    }, 4000);
 
     function connectLocalWebSocket() {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -818,7 +985,6 @@
 
       statusDot.className = 'status-dot connecting';
       statusText.innerText = 'Connecting...';
-      setScreenEmotion('', 'CONNECTING...');
 
       ws = new WebSocket(localWsUrl);
       ws.binaryType = 'arraybuffer';
@@ -826,13 +992,12 @@
       ws.onopen = () => {
         statusDot.className = 'status-dot connected';
         statusText.innerText = 'Connected';
-        setScreenEmotion('happy', 'ONLINE');
+        setAvatarEmotion('happy', 'ONLINE');
       };
 
       ws.onmessage = async (event) => {
         let rawData = event.data;
 
-        // Data biner adalah PCM 24kHz yang sudah di-decode dari Opus XiaoZhi!
         if (rawData instanceof ArrayBuffer) {
           playPCMChunk(rawData);
           return;
@@ -844,7 +1009,6 @@
           return;
         }
 
-        // Data JSON Text
         if (typeof rawData === 'string') {
           try {
             const msg = JSON.parse(rawData);
@@ -855,16 +1019,16 @@
         }
       };
 
-      ws.onerror = (err) => {
+      ws.onerror = () => {
         statusDot.className = 'status-dot disconnected';
         statusText.innerText = 'Error';
-        setScreenEmotion('', 'ERROR');
+        setAvatarEmotion('sad', 'ERROR');
       };
 
       ws.onclose = () => {
         statusDot.className = 'status-dot disconnected';
         statusText.innerText = 'Disconnected';
-        setScreenEmotion('', 'DISCONNECTED');
+        setAvatarEmotion('sad', 'DISCONNECTED');
         setTimeout(connectLocalWebSocket, 4000);
       };
     }
@@ -879,27 +1043,20 @@
 
         case 'hello':
           currentSessionId = msg.session_id;
-          infoSessionId.innerText = currentSessionId || '-';
           showSystemMsg(`🎉 Terhubung ke XiaoZhi! Session ID: ${currentSessionId}`);
-          setScreenEmotion('happy', 'XIAOZHI READY');
+          setAvatarEmotion('happy', 'XIAOZHI READY');
           break;
 
         case 'stt':
-          if (msg.text) {
+          if (msg.text && msg.text !== lastSentText && msg.text.toLowerCase() !== 'xiaozhi') {
             appendMessage('user', msg.text);
           }
-          setScreenEmotion('', 'THINKING...');
+          setAvatarEmotion('thinking', 'BERPIKIR...');
           break;
 
         case 'llm':
-          if (msg.text) {
-            if (!currentAiBubble) {
-              currentAiBubble = appendMessage('ai', msg.text);
-            } else {
-              currentAiBubble.innerText += msg.text;
-              chatMessages.scrollTop = chatMessages.scrollHeight;
-            }
-            setScreenEmotion(msg.emotion || 'happy', msg.text.slice(0, 16));
+          if (msg.emotion) {
+            setAvatarEmotion(msg.emotion, msg.text ? msg.text.slice(0, 16) : 'THINKING');
           }
           break;
 
@@ -907,28 +1064,29 @@
           if (msg.state === 'start') {
             currentAiBubble = null;
             nextPlayTime = playCtx ? playCtx.currentTime : 0;
-            setScreenEmotion('talking', 'SPEAKING...');
+            setAvatarEmotion('happy', 'SPEAKING...');
           } else if (msg.state === 'sentence_start' && msg.text) {
             if (!currentAiBubble) {
               currentAiBubble = appendMessage('ai', msg.text);
             } else {
-              currentAiBubble.innerText = msg.text;
+              currentAiBubble.innerText += ' ' + msg.text;
               chatMessages.scrollTop = chatMessages.scrollHeight;
             }
-            setScreenEmotion('talking', msg.text.slice(0, 16));
+
+            // Animate TalkingHead Lip-Sync & Visemes
+            if (head && isAvatarReady) {
+              try {
+                head.speakText(msg.text, { ttsLang: micLangSelect.value || "id" });
+              } catch (e) {}
+            }
           } else if (msg.state === 'stop') {
             currentAiBubble = null;
-            setScreenEmotion('', 'IDLE');
+            setAvatarEmotion('neutral', 'IDLE');
           }
           break;
 
         case 'alert':
           showSystemMsg(`⚠️ [${msg.status || 'ALERT'}]: ${msg.message}`);
-          setScreenEmotion('', 'ALERT');
-          break;
-
-        case 'mcp':
-          showSystemMsg(`🛠️ Tool Call: ${JSON.stringify(msg)}`);
           break;
       }
     }
@@ -950,62 +1108,51 @@
       chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
-    // Mengirim Pertanyaan Teks dengan Mengubahnya Menjadi Aliran Audio Voice Stream
-    async function sendMessage() {
+    window.sendMessage = async function() {
       initPlaybackAudio();
 
       const text = chatInput.value.trim();
       if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
 
+      lastSentText = text;
       appendMessage('user', text);
       chatInput.value = '';
       currentAiBubble = null;
 
-      setScreenEmotion('listening', 'MENGIRIM...');
+      setAvatarEmotion('thinking', 'MENGIRIM...');
       btnSend.disabled = true;
 
       try {
-        // 1. Fetch TTS Audio untuk teks pertanyaan
         const lang = micLangSelect.value || 'id';
         const res = await fetch(`/api/tts?text=${encodeURIComponent(text)}&lang=${lang}`);
         if (!res.ok) throw new Error('TTS Proxy failed');
 
         const arrayBuffer = await res.arrayBuffer();
-
-        // 2. Decode audio ke PCM 16kHz
         const tempCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
         const audioBuffer = await tempCtx.decodeAudioData(arrayBuffer);
         const float32 = audioBuffer.getChannelData(0);
 
-        // Convert ke Int16 PCM
         const int16 = new Int16Array(float32.length);
         for (let i = 0; i < float32.length; i++) {
           const s = Math.max(-1, Math.min(1, float32[i]));
           int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
         }
 
-        // 3. Kirimkan sinyal start listening ke XiaoZhi
         ws.send(JSON.stringify({ type: 'abort', session_id: currentSessionId }));
-        ws.send(JSON.stringify({ type: 'listen', state: 'detect', text: 'xiaozhi' }));
-
-        await new Promise(r => setTimeout(r, 120));
         ws.send(JSON.stringify({ type: 'listen', state: 'start', mode: 'manual' }));
 
-        // 4. Alirkan potongan audio PCM 16kHz (per 960 sample = 1920 byte = 60ms)
         const CHUNK_SIZE = 1920;
         const pcmBytes = new Uint8Array(int16.buffer);
 
         for (let offset = 0; offset < pcmBytes.length; offset += CHUNK_SIZE) {
           const chunk = pcmBytes.subarray(offset, Math.min(offset + CHUNK_SIZE, pcmBytes.length));
           ws.send(chunk.buffer);
-          // Beri sedikit jeda sesuai durasi audio agar streaming natural
           await new Promise(r => setTimeout(r, 55));
         }
 
-        // 5. Kirimkan sinyal stop listening
         await new Promise(r => setTimeout(r, 100));
         ws.send(JSON.stringify({ type: 'listen', state: 'stop' }));
-        setScreenEmotion('', 'BERPIKIR...');
+        setAvatarEmotion('thinking', 'BERPIKIR...');
 
         tempCtx.close();
       } catch (err) {
@@ -1014,38 +1161,48 @@
       } finally {
         btnSend.disabled = false;
       }
-    }
+    };
 
-    function sendWakeWord() {
+    window.sendWakeWord = function() {
       initPlaybackAudio();
       if (ws && ws.readyState === WebSocket.OPEN) {
         showSystemMsg('🔔 Mengirim Wake Word "Xiao Zhi"...');
-        setScreenEmotion('happy', 'WAKE UP');
+        setAvatarEmotion('happy', 'WAKE UP');
         currentAiBubble = null;
         ws.send(JSON.stringify({ type: 'listen', state: 'detect', text: 'xiaozhi' }));
       }
-    }
+    };
 
-    function sendAbort() {
+    window.sendAbort = function() {
       if (ws && ws.readyState === WebSocket.OPEN) {
         if (playCtx) nextPlayTime = playCtx.currentTime;
+        if (head && isAvatarReady) { try { head.stopSpeaking(); } catch (e) {} }
         showSystemMsg('🛑 Mengirim sinyal Abort / Interruption...');
-        setScreenEmotion('', 'ABORTED');
+        setAvatarEmotion('neutral', 'ABORTED');
         currentAiBubble = null;
         ws.send(JSON.stringify({ type: 'abort', session_id: currentSessionId }));
       }
-    }
+    };
 
-    function reconnectWS() {
+    window.reconnectWS = function() {
       if (ws) ws.close();
       connectLocalWebSocket();
-    }
+    };
 
-    function handleKeyPress(e) {
-      if (e.key === 'Enter') sendMessage();
-    }
+    window.handleKeyPress = function(e) {
+      if (e.key === 'Enter') window.sendMessage();
+    };
 
-    // Init
+    // Auto Blink for OLED
+    setInterval(() => {
+      if (!avatarEyes.classList.contains('talking') && !avatarEyes.classList.contains('listening')) {
+        avatarEyes.classList.add('blink');
+        setTimeout(() => avatarEyes.classList.remove('blink'), 200);
+      }
+    }, 4000);
+
+    // Initialize 3D Avatar and Configuration
+    init3DAvatar('male_casual');
     loadConfig();
   </script>
 </body>
