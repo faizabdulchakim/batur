@@ -8,13 +8,13 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 
-  <!-- Three.js and TalkingHead.js Import Map -->
+  <!-- Three.js and Local TalkingHead Import Map -->
   <script type="importmap">
   {
     "imports": {
       "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js/+esm",
       "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/",
-      "talkinghead": "https://cdn.jsdelivr.net/gh/met4citizen/TalkingHead@1.7/modules/talkinghead.mjs"
+      "talkinghead": "./modules/talkinghead.mjs"
     }
   }
   </script>
@@ -237,6 +237,8 @@
       top: 0; left: 0; right: 0; bottom: 0;
       z-index: 10;
       transition: opacity 0.4s;
+      text-align: center;
+      padding: 20px;
     }
 
     .spinner {
@@ -634,7 +636,7 @@
           <div id="avatarNode"></div>
           <div class="avatar-loading" id="avatarLoading">
             <div class="spinner"></div>
-            <span>Memuat Avatar 3D...</span>
+            <span>Memuat Avatar 3D (Lokal)...</span>
           </div>
         </div>
 
@@ -652,10 +654,9 @@
         <div class="model-selector-row">
           <span style="font-size: 12px; color: var(--text-dim);">Pilih Karakter:</span>
           <select id="avatarModelSelect" class="model-select" onchange="changeAvatarModel(this.value)">
-            <option value="male_casual" selected>👨 Alex (Casual Male)</option>
-            <option value="female_casual">👩 Sarah (Casual Female)</option>
-            <option value="male_business">👔 James (Business Male)</option>
-            <option value="female_business">💼 Claire (Business Female)</option>
+            <option value="brunette" selected>👩 Maya (Local 3D Human)</option>
+            <option value="male_casual">👨 Alex (Ready Player Me)</option>
+            <option value="female_casual">👩 Sarah (Ready Player Me)</option>
           </select>
         </div>
 
@@ -746,18 +747,18 @@
     const tabOled = document.getElementById('tabOled');
 
     const AVATAR_MODELS = {
+      brunette: "./avatars/brunette.glb",
       male_casual: "https://models.readyplayer.me/64b7a6f086760d62bf9e471e.glb?morphTargets=ARKit,Oculus+Visemes",
-      female_casual: "https://models.readyplayer.me/64b7a65086760d62bf9e4708.glb?morphTargets=ARKit,Oculus+Visemes",
-      male_business: "https://models.readyplayer.me/64c2225f190eec26f3cb4115.glb?morphTargets=ARKit,Oculus+Visemes",
-      female_business: "https://models.readyplayer.me/64c222bb190eec26f3cb412f.glb?morphTargets=ARKit,Oculus+Visemes"
+      female_casual: "https://models.readyplayer.me/64b7a65086760d62bf9e4708.glb?morphTargets=ARKit,Oculus+Visemes"
     };
 
     // ==========================================
     // 🧑 3D TALKING HEAD AVATAR INITIALIZATION
     // ==========================================
-    async function init3DAvatar(modelKey = "male_casual") {
+    async function init3DAvatar(modelKey = "brunette") {
       avatarLoading.style.display = 'flex';
       avatarLoading.style.opacity = '1';
+      avatarLoading.innerHTML = `<div class="spinner"></div><span>Memuat Avatar 3D...</span>`;
 
       try {
         const nodeAvatar = document.getElementById('avatarNode');
@@ -766,18 +767,18 @@
         head = new TalkingHead(nodeAvatar, {
           avatarMood: "neutral",
           cameraView: "head",
-          cameraDistance: 0.8,
+          cameraDistance: 0.65,
           cameraY: 0.05,
           cameraRotateSpeed: 0.5,
           markedOptions: { mangle: false, headerIds: false }
         });
 
-        const avatarUrl = AVATAR_MODELS[modelKey] || AVATAR_MODELS.male_casual;
-        console.log(`🌐 Loading Ready Player Me 3D Avatar: ${avatarUrl}`);
+        const avatarUrl = AVATAR_MODELS[modelKey] || AVATAR_MODELS.brunette;
+        console.log(`🌐 Loading 3D Avatar: ${avatarUrl}`);
 
         await head.showAvatar({
           url: avatarUrl,
-          body: modelKey.startsWith('f') ? 'F' : 'M',
+          body: 'F',
           avatarMood: "neutral"
         });
 
@@ -788,6 +789,12 @@
         showSystemMsg('🧑 Avatar 3D siap berinteraksi!');
       } catch (err) {
         console.error('❌ Failed to load 3D Avatar:', err);
+        // If external model failed, try local fallback
+        if (modelKey !== 'brunette') {
+          console.log('🔄 Trying fallback to local avatar...');
+          await init3DAvatar('brunette');
+          return;
+        }
         avatarLoading.innerHTML = `<span style="color:#f85149">Gagal memuat 3D (${err.message}).<br>Beralih ke mode OLED...</span>`;
         setTimeout(() => switchView('oled'), 2500);
       }
@@ -1201,8 +1208,8 @@
       }
     }, 4000);
 
-    // Initialize 3D Avatar and Configuration
-    init3DAvatar('male_casual');
+    // Initialize Local 3D Avatar and Configuration
+    init3DAvatar('brunette');
     loadConfig();
   </script>
 </body>
