@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>XiaoZhi (小智 AI) - Device Simulator & Voice Chatbot</title>
+  <title>XiaoZhi (小智 AI) - Device Simulator with Camera & Vision AI</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -43,7 +43,7 @@
 
     .container {
       width: 100%;
-      max-width: 980px;
+      max-width: 1060px;
       display: flex;
       flex-direction: column;
       gap: 20px;
@@ -89,6 +89,12 @@
       color: var(--text-dim);
     }
 
+    .header-badges {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
     .status-badge {
       display: flex;
       align-items: center;
@@ -131,11 +137,11 @@
 
     .main-grid {
       display: grid;
-      grid-template-columns: 340px 1fr;
+      grid-template-columns: 380px 1fr;
       gap: 20px;
     }
 
-    @media (max-width: 800px) {
+    @media (max-width: 900px) {
       .main-grid {
         grid-template-columns: 1fr;
       }
@@ -157,12 +163,12 @@
       background: var(--oled-bg);
       border: 3px solid #30363d;
       border-radius: 18px;
-      padding: 24px 20px;
+      padding: 20px;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      min-height: 190px;
+      min-height: 170px;
       box-shadow: inset 0 0 20px rgba(0, 240, 255, 0.08);
       position: relative;
       overflow: hidden;
@@ -181,7 +187,7 @@
     .avatar-eyes {
       display: flex;
       gap: 32px;
-      margin-bottom: 14px;
+      margin-bottom: 12px;
       transition: all 0.3s ease;
     }
 
@@ -236,24 +242,150 @@
       min-height: 20px;
     }
 
+    /* Camera / Webcam Section */
+    .camera-container {
+      background: #000;
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      overflow: hidden;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 200px;
+    }
+
+    .webcam-video {
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+      display: block;
+    }
+
+    .camera-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: var(--text-dim);
+      padding: 30px;
+      text-align: center;
+    }
+
+    .camera-overlay {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      display: flex;
+      gap: 6px;
+      background: rgba(0, 0, 0, 0.65);
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      color: #3fb950;
+      border: 1px solid rgba(63, 185, 80, 0.4);
+    }
+
+    .scan-line {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, #00f0ff, transparent);
+      box-shadow: 0 0 12px #00f0ff;
+      display: none;
+      animation: scanAnim 1.8s infinite ease-in-out;
+    }
+
+    @keyframes scanAnim {
+      0% { top: 5%; opacity: 0.2; }
+      50% { top: 90%; opacity: 1; }
+      100% { top: 5%; opacity: 0.2; }
+    }
+
+    .camera-controls {
+      display: flex;
+      gap: 8px;
+      width: 100%;
+    }
+
+    .btn-camera {
+      flex: 1;
+      background: #21262d;
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .btn-camera:hover {
+      background: #30363d;
+    }
+
+    .btn-snap {
+      background: linear-gradient(135deg, #1f6feb, #8957e5);
+      color: #fff;
+      border: none;
+    }
+
+    .btn-snap:hover {
+      opacity: 0.9;
+    }
+
+    .snapshot-preview-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255, 255, 255, 0.03);
+      padding: 8px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .snapshot-thumb {
+      width: 48px;
+      height: 36px;
+      border-radius: 4px;
+      object-fit: cover;
+      border: 1px solid var(--accent);
+    }
+
+    .snapshot-info {
+      font-size: 11px;
+      color: var(--text-dim);
+      flex: 1;
+    }
+
     .info-list {
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 8px;
     }
 
     .info-row {
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 2px;
       background: rgba(255, 255, 255, 0.02);
-      padding: 10px 12px;
+      padding: 8px 10px;
       border-radius: 8px;
       border: 1px solid rgba(255, 255, 255, 0.04);
     }
 
     .info-label {
-      font-size: 11px;
+      font-size: 10px;
       text-transform: uppercase;
       letter-spacing: 0.5px;
       color: var(--text-dim);
@@ -261,7 +393,7 @@
 
     .info-val {
       font-family: 'JetBrains Mono', monospace;
-      font-size: 13px;
+      font-size: 12px;
       word-break: break-all;
       color: var(--text-main);
     }
@@ -270,48 +402,29 @@
       background: linear-gradient(135deg, rgba(88, 166, 255, 0.12), rgba(137, 87, 229, 0.18));
       border: 1px solid var(--accent);
       border-radius: 12px;
-      padding: 14px;
+      padding: 12px;
       text-align: center;
     }
 
     .code-box-title {
-      font-size: 12px;
+      font-size: 11px;
       color: var(--accent);
       font-weight: 600;
-      margin-bottom: 6px;
+      margin-bottom: 4px;
     }
 
     .code-digits {
       font-family: 'JetBrains Mono', monospace;
-      font-size: 28px;
+      font-size: 24px;
       font-weight: 700;
-      letter-spacing: 6px;
+      letter-spacing: 4px;
       color: #fff;
       text-shadow: 0 0 12px var(--accent);
     }
 
-    .btn-console {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      background: #238636;
-      color: #fff;
-      text-decoration: none;
-      padding: 11px;
-      border-radius: 8px;
-      font-size: 13px;
-      font-weight: 600;
-      transition: background 0.2s;
-    }
-
-    .btn-console:hover {
-      background: #2ea043;
-    }
-
     /* Chat Section */
     .chat-container {
-      height: 580px;
+      height: 640px;
       display: flex;
       flex-direction: column;
     }
@@ -341,6 +454,14 @@
       font-size: 14px;
       line-height: 1.5;
       animation: fadeIn 0.2s ease;
+    }
+
+    .msg-image {
+      margin-bottom: 8px;
+      max-width: 180px;
+      border-radius: 8px;
+      display: block;
+      border: 1px solid rgba(255, 255, 255, 0.2);
     }
 
     @keyframes fadeIn {
@@ -444,7 +565,6 @@
       color: #fff;
     }
 
-    /* Microphone Button */
     .btn-mic {
       background: #21262d;
       color: var(--text-main);
@@ -454,7 +574,6 @@
       padding: 0;
       border-radius: 10px;
       font-size: 18px;
-      position: relative;
     }
 
     .btn-mic:hover {
@@ -527,17 +646,20 @@
         <div class="logo-badge">🤖</div>
         <div>
           <h1>XiaoZhi Device Simulator (BATUR)</h1>
-          <p>ESP32 AI Voice Assistant with Real Opus Audio</p>
+          <p>ESP32 AI Voice Assistant with Camera & Vision AI</p>
         </div>
       </div>
-      <div class="status-badge" id="statusBadge">
-        <span class="status-dot connecting" id="statusDot"></span>
-        <span id="statusText">Connecting...</span>
+      <div class="header-badges">
+        <span class="audio-badge">📷 Vision AI Ready</span>
+        <div class="status-badge" id="statusBadge">
+          <span class="status-dot connecting" id="statusDot"></span>
+          <span id="statusText">Connecting...</span>
+        </div>
       </div>
     </header>
 
     <div class="main-grid">
-      <!-- Left Column: Hardware & Activation -->
+      <!-- Left Column: Hardware, OLED & Camera -->
       <div class="card">
         <!-- OLED Screen -->
         <div class="device-screen-box">
@@ -549,25 +671,50 @@
           <div class="oled-text" id="oledText">XIAOZHI AI IDLE</div>
         </div>
 
+        <!-- Camera Section (Webcam Vision AI) -->
+        <div class="camera-container" id="cameraContainer">
+          <div class="camera-overlay">
+            <span>● ESP32-CAM</span>
+            <span id="camStatusText">OFFLINE</span>
+          </div>
+          <div class="scan-line" id="scanLine"></div>
+          
+          <video id="webcamVideo" class="webcam-video" autoplay playsinline muted style="display: none;"></video>
+          
+          <div id="cameraPlaceholder" class="camera-placeholder">
+            <span style="font-size: 28px;">📷</span>
+            <span style="font-size: 12px;">Kamera Nonaktif</span>
+          </div>
+        </div>
+
+        <div class="camera-controls">
+          <button id="btnToggleCam" class="btn-camera" onclick="toggleWebcam()">
+            📹 Buka Kamera
+          </button>
+          <button id="btnSnapAsk" class="btn-camera btn-snap" onclick="snapAndAsk()">
+            📸 Snap & Tanya
+          </button>
+        </div>
+
+        <div id="snapshotRow" class="snapshot-preview-row" style="display: none;">
+          <img id="snapshotThumb" class="snapshot-thumb" src="" alt="Snapshot">
+          <div class="snapshot-info">
+            <b style="color: var(--text-main);">Foto Terambil</b><br>
+            <span id="snapshotTime">Siap dianalisis oleh AI</span>
+          </div>
+        </div>
+
         <!-- 6 Digit Activation Code -->
         <div class="code-box">
           <div class="code-box-title">🔑 KODE AKTIVASI DEVICE</div>
           <div class="code-digits" id="codeDigits">------</div>
         </div>
 
-        <a href="https://xiaozhi.me/" target="_blank" class="btn-console">
-          🔗 Buka Console xiaozhi.me & Pair
-        </a>
-
         <!-- Device Info -->
         <div class="info-list">
           <div class="info-row">
-            <span class="info-label">MAC Address (Device ID)</span>
+            <span class="info-label">MAC Address</span>
             <span class="info-val" id="infoMac">Loading...</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">Client ID (UUID)</span>
-            <span class="info-val" id="infoClientId">Loading...</span>
           </div>
           <div class="info-row">
             <span class="info-label">Session ID</span>
@@ -585,7 +732,6 @@
             <button class="btn btn-secondary" onclick="reconnectWS()">🔄 Reconnect</button>
           </div>
           <div class="options-group">
-            <span class="audio-badge">🔊 Suara Asli XiaoZhi</span>
             <select id="micLangSelect" class="lang-select" title="Pilih Bahasa Audio">
               <option value="id" selected>🇮🇩 ID</option>
               <option value="en">🇺🇸 EN</option>
@@ -596,7 +742,7 @@
 
         <div class="chat-messages" id="chatMessages">
           <div class="msg-bubble msg-system">
-            👋 Selamat datang! Klik tombol mikrofon <b>🎙️ untuk bicara langsung lewat Mic PC</b> atau ketik pertanyaan di kotak chat.
+            👋 Selamat datang! Klik tombol <b>📹 Buka Kamera</b> untuk mengaktifkan mata kamera XiaoZhi, lalu gunakan <b>📸 Snap & Tanya</b> atau mic untuk bertanya seputar apa yang dilihat!
           </div>
         </div>
 
@@ -604,12 +750,14 @@
           <button id="btnMic" class="btn btn-mic" onclick="toggleMicrophone()" title="Klik untuk berbicara lewat mic PC">
             🎙️
           </button>
-          <input type="text" id="chatInput" class="chat-input" placeholder="Ketik atau klik tombol Mic untuk bicara..." onkeypress="handleKeyPress(event)">
+          <input type="text" id="chatInput" class="chat-input" placeholder="Ketik atau tanya tentang objek yang terlihat di kamera..." onkeypress="handleKeyPress(event)">
           <button id="btnSend" class="btn btn-primary" onclick="sendMessage()">Kirim</button>
         </div>
       </div>
     </div>
   </div>
+
+  <canvas id="snapshotCanvas" style="display: none;"></canvas>
 
   <script>
     let ws = null;
@@ -617,6 +765,15 @@
     let currentSessionId = null;
     let ttsTimer = null;
     let currentAiBubble = null;
+
+    // Vision / MCP Capabilities
+    let visionEndpointUrl = null;
+    let visionToken = null;
+    let lastSnapshotDataUrl = null;
+
+    // Camera Variables
+    let isCamActive = false;
+    let webcamStream = null;
 
     // Web Audio Variables for Real Opus Playback (24kHz Mono)
     let playCtx = null;
@@ -635,7 +792,6 @@
     const avatarEyes = document.getElementById('avatarEyes');
     const codeDigits = document.getElementById('codeDigits');
     const infoMac = document.getElementById('infoMac');
-    const infoClientId = document.getElementById('infoClientId');
     const infoSessionId = document.getElementById('infoSessionId');
     const chatMessages = document.getElementById('chatMessages');
     const chatInput = document.getElementById('chatInput');
@@ -643,7 +799,135 @@
     const btnMic = document.getElementById('btnMic');
     const micLangSelect = document.getElementById('micLangSelect');
 
-    // Inisialisasi Audio Context untuk Playback Suara Asli XiaoZhi
+    const webcamVideo = document.getElementById('webcamVideo');
+    const cameraPlaceholder = document.getElementById('cameraPlaceholder');
+    const btnToggleCam = document.getElementById('btnToggleCam');
+    const camStatusText = document.getElementById('camStatusText');
+    const scanLine = document.getElementById('scanLine');
+    const snapshotRow = document.getElementById('snapshotRow');
+    const snapshotThumb = document.getElementById('snapshotThumb');
+    const snapshotTime = document.getElementById('snapshotTime');
+    const snapshotCanvas = document.getElementById('snapshotCanvas');
+
+    // ==========================================
+    // 📷 CAMERA & WEBCAM VISION FUNCTIONS
+    // ==========================================
+    async function toggleWebcam() {
+      if (isCamActive) {
+        stopWebcam();
+      } else {
+        await startWebcam();
+      }
+    }
+
+    async function startWebcam() {
+      try {
+        webcamStream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" }
+        });
+
+        webcamVideo.srcObject = webcamStream;
+        webcamVideo.style.display = 'block';
+        cameraPlaceholder.style.display = 'none';
+        isCamActive = true;
+        btnToggleCam.innerText = '⏹️ Tutup Kamera';
+        btnToggleCam.classList.add('btn-danger');
+        camStatusText.innerText = 'ONLINE';
+        camStatusText.style.color = '#3fb950';
+        showSystemMsg('📷 Kamera Webcam aktif. XiaoZhi kini dapat melihat objek!');
+      } catch (err) {
+        console.error('Camera Error:', err);
+        showSystemMsg('❌ Gagal mengakses kamera: ' + err.message);
+      }
+    }
+
+    function stopWebcam() {
+      if (webcamStream) {
+        webcamStream.getTracks().forEach(t => t.stop());
+        webcamStream = null;
+      }
+      webcamVideo.style.display = 'none';
+      cameraPlaceholder.style.display = 'flex';
+      isCamActive = false;
+      btnToggleCam.innerText = '📹 Buka Kamera';
+      btnToggleCam.classList.remove('btn-danger');
+      camStatusText.innerText = 'OFFLINE';
+      camStatusText.style.color = '#8b949e';
+      scanLine.style.display = 'none';
+    }
+
+    // Capture JPEG Frame from Webcam
+    function captureJpegFrame() {
+      if (!isCamActive || !webcamVideo.videoWidth) {
+        return null;
+      }
+
+      snapshotCanvas.width = webcamVideo.videoWidth;
+      snapshotCanvas.height = webcamVideo.videoHeight;
+      const ctx = snapshotCanvas.getContext('2d');
+      ctx.drawImage(webcamVideo, 0, 0);
+
+      const dataUrl = snapshotCanvas.toDataURL('image/jpeg', 0.85);
+      lastSnapshotDataUrl = dataUrl;
+
+      snapshotThumb.src = dataUrl;
+      snapshotTime.innerText = new Date().toLocaleTimeString();
+      snapshotRow.style.display = 'flex';
+
+      return dataUrl;
+    }
+
+    // Snap photo and ask question
+    async function snapAndAsk() {
+      if (!isCamActive) {
+        await startWebcam();
+        await new Promise(r => setTimeout(r, 600));
+      }
+
+      const img = captureJpegFrame();
+      if (!img) {
+        showSystemMsg('⚠️ Harap aktifkan kamera terlebih dahulu.');
+        return;
+      }
+
+      scanLine.style.display = 'block';
+      setTimeout(() => { scanLine.style.display = 'none'; }, 2000);
+
+      // Tampilkan thumbnail di chat
+      appendImageMessage('user', img, 'Lihat objek pada foto ini. Benda apakah ini?');
+
+      // Unggah foto ke Vision API jika endpoint tersedia
+      if (visionEndpointUrl) {
+        await uploadImageToVision(img);
+      }
+
+      // Kirim pertanyaan suara/teks ke XiaoZhi
+      sendMessage('Lihat gambar yang saya kirim ini, jelaskan benda apa ini.');
+    }
+
+    async function uploadImageToVision(dataUrl) {
+      try {
+        const blob = await (await fetch(dataUrl)).blob();
+        console.log(`📤 Uploading image (${blob.size} bytes) to Vision endpoint...`);
+        
+        const uploadRes = await fetch('/api/upload-vision', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'image/jpeg',
+            'x-target-url': visionEndpointUrl || 'https://api.tenclass.net/xiaozhi/mcp/vision/explain',
+            'Authorization': visionToken ? `Bearer ${visionToken}` : ''
+          },
+          body: blob
+        });
+        console.log('📸 Upload status:', uploadRes.status);
+      } catch (e) {
+        console.warn('Vision upload error:', e);
+      }
+    }
+
+    // ==========================================
+    // 🔊 AUDIO PLAYBACK & STREAMING FUNCTIONS
+    // ==========================================
     function initPlaybackAudio() {
       if (!playCtx) {
         playCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
@@ -654,7 +938,6 @@
       }
     }
 
-    // Memutar potongan PCM biner (24kHz 16-bit Int16) asli dari server XiaoZhi
     function playPCMChunk(arrayBuffer) {
       initPlaybackAudio();
 
@@ -683,10 +966,8 @@
       }, 1000);
     }
 
-    // Mengaktifkan Mikrofon PC dan Streaming 16kHz PCM ke WebSocket
     async function toggleMicrophone() {
       initPlaybackAudio();
-
       if (isRecording) {
         stopMicrophone();
       } else {
@@ -702,13 +983,7 @@
 
       try {
         micStream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            sampleRate: 16000,
-            channelCount: 1,
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true
-          }
+          audio: { sampleRate: 16000, channelCount: 1, echoCancellation: true, noiseSuppression: true }
         });
 
         micCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
@@ -721,7 +996,6 @@
         setScreenEmotion('listening', 'MENDENGARKAN...');
         chatInput.placeholder = 'Sedang mendengarkan suara Anda... (Klik mic lagi untuk selesai)';
 
-        // 1. Kirim sinyal start listening
         ws.send(JSON.stringify({ type: 'abort', session_id: currentSessionId }));
         ws.send(JSON.stringify({ type: 'listen', state: 'detect', text: 'xiaozhi' }));
         setTimeout(() => {
@@ -736,7 +1010,6 @@
             const s = Math.max(-1, Math.min(1, float32[i]));
             int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
           }
-          // Kirim binary PCM 16kHz ke server
           if (ws && ws.readyState === WebSocket.OPEN) {
             ws.send(int16.buffer);
           }
@@ -744,7 +1017,6 @@
 
         source.connect(micProcessor);
         micProcessor.connect(micCtx.destination);
-
       } catch (err) {
         console.error('Mic Error:', err);
         showSystemMsg('❌ Gagal mengakses mikrofon: ' + err.message);
@@ -759,35 +1031,25 @@
       btnMic.innerText = '🎙️';
       chatInput.placeholder = 'Ketik atau klik tombol Mic untuk bicara...';
 
-      if (micProcessor) {
-        micProcessor.disconnect();
-        micProcessor = null;
-      }
-      if (micStream) {
-        micStream.getTracks().forEach(t => t.stop());
-        micStream = null;
-      }
-      if (micCtx) {
-        micCtx.close();
-        micCtx = null;
-      }
+      if (micProcessor) { micProcessor.disconnect(); micProcessor = null; }
+      if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+      if (micCtx) { micCtx.close(); micCtx = null; }
 
       setScreenEmotion('', 'MEMPROSES...');
-
-      // 2. Kirim sinyal stop listening ke XiaoZhi
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: 'listen', state: 'stop' }));
       }
     }
 
-    // Fetch config
+    // ==========================================
+    // 🌐 WEBSOCKET & MCP PROTOCOL HANDLER
+    // ==========================================
     async function loadConfig() {
       try {
         const res = await fetch('/api/config');
         if (res.ok) {
           config = await res.json();
           infoMac.innerText = config.mac_address || '-';
-          infoClientId.innerText = config.client_id || '-';
           codeDigits.innerText = config.activation_code || '------';
           oledText.innerText = `CODE: ${config.activation_code || 'READY'}`;
           connectLocalWebSocket();
@@ -804,7 +1066,6 @@
       if (text) oledText.innerText = text.toUpperCase();
     }
 
-    // Auto blink
     setInterval(() => {
       if (!avatarEyes.classList.contains('talking') && !avatarEyes.classList.contains('listening')) {
         avatarEyes.classList.add('blink');
@@ -832,7 +1093,6 @@
       ws.onmessage = async (event) => {
         let rawData = event.data;
 
-        // Data biner adalah PCM 24kHz yang sudah di-decode dari Opus XiaoZhi!
         if (rawData instanceof ArrayBuffer) {
           playPCMChunk(rawData);
           return;
@@ -844,7 +1104,6 @@
           return;
         }
 
-        // Data JSON Text
         if (typeof rawData === 'string') {
           try {
             const msg = JSON.parse(rawData);
@@ -855,7 +1114,7 @@
         }
       };
 
-      ws.onerror = (err) => {
+      ws.onerror = () => {
         statusDot.className = 'status-dot disconnected';
         statusText.innerText = 'Error';
         setScreenEmotion('', 'ERROR');
@@ -869,7 +1128,7 @@
       };
     }
 
-    function handleMessage(msg) {
+    async function handleMessage(msg) {
       console.log('📥 [Parsed Server Message]:', msg);
 
       switch (msg.type) {
@@ -922,14 +1181,94 @@
           }
           break;
 
+        case 'mcp':
+          // JSON-RPC 2.0 MCP Handler
+          handleMcpPayload(msg);
+          break;
+
         case 'alert':
           showSystemMsg(`⚠️ [${msg.status || 'ALERT'}]: ${msg.message}`);
           setScreenEmotion('', 'ALERT');
           break;
+      }
+    }
 
-        case 'mcp':
-          showSystemMsg(`🛠️ Tool Call: ${JSON.stringify(msg)}`);
-          break;
+    // MCP JSON-RPC 2.0 (Camera Tool Execution)
+    async function handleMcpPayload(msg) {
+      const payload = msg.payload || msg;
+      const method = payload.method;
+      const id = payload.id;
+
+      console.log('🛠️ [MCP Method Received]:', method, payload);
+
+      if (method === 'initialize') {
+        const capabilities = payload.params?.capabilities || {};
+        if (capabilities.vision?.url) {
+          visionEndpointUrl = capabilities.vision.url;
+          visionToken = capabilities.vision.token;
+          showSystemMsg(`👁️ Vision Capability Aktif: ${visionEndpointUrl}`);
+        }
+
+        // Response initialize
+        ws.send(JSON.stringify({
+          type: 'mcp',
+          payload: {
+            jsonrpc: '2.0',
+            id: id,
+            result: {
+              protocolVersion: '2024-11-05',
+              capabilities: { tools: {} },
+              serverInfo: { name: 'batur-camera-mcp', version: '1.0.0' }
+            }
+          }
+        }));
+      }
+
+      if (method === 'tools/list') {
+        ws.send(JSON.stringify({
+          type: 'mcp',
+          payload: {
+            jsonrpc: '2.0',
+            id: id,
+            result: {
+              tools: [
+                {
+                  name: 'self.camera.take_photo',
+                  description: 'Ambil foto kamera untuk menganalisis objek atau teks secara visual',
+                  inputSchema: { type: 'object', properties: {} }
+                }
+              ]
+            }
+          }
+        }));
+      }
+
+      if (method === 'tools/call') {
+        const toolName = payload.params?.name;
+        if (toolName === 'self.camera.take_photo' || toolName === 'self.camera.explain_image') {
+          showSystemMsg('📸 XiaoZhi meminta jepretan kamera (Vision AI)...');
+          scanLine.style.display = 'block';
+
+          if (!isCamActive) await startWebcam();
+          const img = captureJpegFrame();
+
+          if (img && visionEndpointUrl) {
+            await uploadImageToVision(img);
+          }
+
+          setTimeout(() => { scanLine.style.display = 'none'; }, 2000);
+
+          ws.send(JSON.stringify({
+            type: 'mcp',
+            payload: {
+              jsonrpc: '2.0',
+              id: id,
+              result: {
+                content: [{ type: 'text', text: 'Photo successfully captured by webcam.' }]
+              }
+            }
+          }));
+        }
       }
     }
 
@@ -937,6 +1276,26 @@
       const bubble = document.createElement('div');
       bubble.className = `msg-bubble msg-${sender}`;
       bubble.innerText = text;
+      chatMessages.appendChild(bubble);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+      return bubble;
+    }
+
+    function appendImageMessage(sender, imgUrl, caption) {
+      const bubble = document.createElement('div');
+      bubble.className = `msg-bubble msg-${sender}`;
+      
+      const img = document.createElement('img');
+      img.src = imgUrl;
+      img.className = 'msg-image';
+      bubble.appendChild(img);
+
+      if (caption) {
+        const textNode = document.createElement('div');
+        textNode.innerText = caption;
+        bubble.appendChild(textNode);
+      }
+
       chatMessages.appendChild(bubble);
       chatMessages.scrollTop = chatMessages.scrollHeight;
       return bubble;
@@ -950,59 +1309,52 @@
       chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
-    // Mengirim Pertanyaan Teks dengan Mengubahnya Menjadi Aliran Audio Voice Stream
-    async function sendMessage() {
+    async function sendMessage(overrideText) {
       initPlaybackAudio();
 
-      const text = chatInput.value.trim();
+      const text = (overrideText || chatInput.value).trim();
       if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
 
-      appendMessage('user', text);
-      chatInput.value = '';
+      if (!overrideText) {
+        appendMessage('user', text);
+        chatInput.value = '';
+      }
       currentAiBubble = null;
 
       setScreenEmotion('listening', 'MENGIRIM...');
       btnSend.disabled = true;
 
       try {
-        // 1. Fetch TTS Audio untuk teks pertanyaan
         const lang = micLangSelect.value || 'id';
         const res = await fetch(`/api/tts?text=${encodeURIComponent(text)}&lang=${lang}`);
         if (!res.ok) throw new Error('TTS Proxy failed');
 
         const arrayBuffer = await res.arrayBuffer();
-
-        // 2. Decode audio ke PCM 16kHz
         const tempCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
         const audioBuffer = await tempCtx.decodeAudioData(arrayBuffer);
         const float32 = audioBuffer.getChannelData(0);
 
-        // Convert ke Int16 PCM
         const int16 = new Int16Array(float32.length);
         for (let i = 0; i < float32.length; i++) {
           const s = Math.max(-1, Math.min(1, float32[i]));
           int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
         }
 
-        // 3. Kirimkan sinyal start listening ke XiaoZhi
         ws.send(JSON.stringify({ type: 'abort', session_id: currentSessionId }));
         ws.send(JSON.stringify({ type: 'listen', state: 'detect', text: 'xiaozhi' }));
 
         await new Promise(r => setTimeout(r, 120));
         ws.send(JSON.stringify({ type: 'listen', state: 'start', mode: 'manual' }));
 
-        // 4. Alirkan potongan audio PCM 16kHz (per 960 sample = 1920 byte = 60ms)
         const CHUNK_SIZE = 1920;
         const pcmBytes = new Uint8Array(int16.buffer);
 
         for (let offset = 0; offset < pcmBytes.length; offset += CHUNK_SIZE) {
           const chunk = pcmBytes.subarray(offset, Math.min(offset + CHUNK_SIZE, pcmBytes.length));
           ws.send(chunk.buffer);
-          // Beri sedikit jeda sesuai durasi audio agar streaming natural
           await new Promise(r => setTimeout(r, 55));
         }
 
-        // 5. Kirimkan sinyal stop listening
         await new Promise(r => setTimeout(r, 100));
         ws.send(JSON.stringify({ type: 'listen', state: 'stop' }));
         setScreenEmotion('', 'BERPIKIR...');

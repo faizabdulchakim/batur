@@ -18,6 +18,7 @@ const mimeTypes = {
   '.json': 'application/json; charset=utf-8',
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
   '.svg': 'image/svg+xml',
   '.mp3': 'audio/mpeg',
   '.wav': 'audio/wav'
@@ -27,7 +28,7 @@ const mimeTypes = {
 const server = http.createServer(async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-target-url');
 
   if (req.method === 'OPTIONS') {
     res.writeHead(204);
@@ -55,6 +56,41 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify({ error: 'config.json not found' }));
       return;
     }
+  }
+
+  // API: Vision Image Upload Proxy (for Camera MCP Vision AI)
+  if (url.pathname === '/api/upload-vision' && req.method === 'POST') {
+    const targetUrl = req.headers['x-target-url'] || 'https://api.tenclass.net/xiaozhi/mcp/vision/explain';
+    const authHeader = req.headers['authorization'] || '';
+    const contentType = req.headers['content-type'] || 'image/jpeg';
+
+    const chunks = [];
+    req.on('data', chunk => chunks.push(chunk));
+    req.on('end', async () => {
+      const imageBuffer = Buffer.concat(chunks);
+      console.log(`📸 [Vision Upload Proxy] Mengunggah foto (${imageBuffer.length} bytes) ke: ${targetUrl}`);
+
+      try {
+        const uploadRes = await fetch(targetUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': contentType,
+            'Authorization': authHeader
+          },
+          body: imageBuffer
+        });
+
+        const respText = await uploadRes.text();
+        console.log(`📸 [Vision Upload Response]: Status ${uploadRes.status}`, respText);
+        res.writeHead(uploadRes.status, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(respText);
+      } catch (e) {
+        console.error('❌ [Vision Upload Error]:', e.message);
+        res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ error: e.message }));
+      }
+    });
+    return;
   }
 
   // API: TTS Fetch proxy (to bypass CORS in browser)
@@ -109,7 +145,7 @@ const server = http.createServer(async (req, res) => {
   });
 });
 
-// WebSocket Server (Audio Streaming Proxy Bridge to XiaoZhi)
+// WebSocket Server (Audio Streaming & MCP Proxy Bridge to XiaoZhi)
 const wss = new WebSocketServer({ server });
 
 wss.on('connection', (clientWs) => {
@@ -129,9 +165,7 @@ wss.on('connection', (clientWs) => {
   console.log(`📌 Device MAC: ${config.mac_address} | Client ID: ${config.client_id}`);
 
   // Inisialisasi Opus Codec untuk sesi ini
-  // Encoder: 16kHz Mono -> Opus frames untuk dikirim ke XiaoZhi
   const opusEncoder = new OpusScript(16000, 1, OpusScript.Application.VOIP);
-  // Decoder: 24kHz Mono Opus frames dari XiaoZhi -> 24kHz PCM untuk browser
   const opusDecoder = new OpusScript(24000, 1, OpusScript.Application.AUDIO);
 
   const FRAME_SAMPLES_16K = 960; // 60ms @ 16kHz
@@ -165,11 +199,15 @@ wss.on('connection', (clientWs) => {
   upstreamWs.on('open', () => {
     console.log('✅ [Proxy] Upstream terhubung ke XiaoZhi!');
 
-    // 1. Kirim hello handshake otomatis
+    // 1. Kirim hello handshake otomatis dengan fitur camera & MCP aktif
     const helloPayload = {
       type: 'hello',
       version: 1,
-      features: { mcp: true, aec: true },
+      features: {
+        mcp: true,
+        camera: true,
+        aec: true
+      },
       transport: 'websocket',
       audio_params: {
         format: 'opus',
@@ -179,7 +217,7 @@ wss.on('connection', (clientWs) => {
       }
     };
     upstreamWs.send(JSON.stringify(helloPayload));
-    console.log('📤 [Proxy -> XiaoZhi]: Hello Handshake sent');
+    console.log('📤 [Proxy -> XiaoZhi]: Hello Handshake sent (Features: MCP, Camera, AEC)');
 
     // 2. Beri tahu browser
     if (clientWs.readyState === WebSocket.OPEN) {
@@ -205,12 +243,10 @@ wss.on('connection', (clientWs) => {
       // Data biner adalah Opus audio frame dari XiaoZhi (24kHz Mono)
       try {
         const decodedPCM = opusDecoder.decode(data);
-        // Kirim decoded PCM (24kHz 16-bit Int16) ke browser untuk playback
         if (clientWs.readyState === WebSocket.OPEN) {
           clientWs.send(decodedPCM, { binary: true });
         }
       } catch (err) {
-        // Fallback: kirim raw opus jika decode lokal gagal
         if (clientWs.readyState === WebSocket.OPEN) {
           clientWs.send(data, { binary: true });
         }
@@ -245,8 +281,6 @@ wss.on('connection', (clientWs) => {
   // Menerima pesan dari Browser Client
   clientWs.on('message', (data, isBinary) => {
     if (isBinary) {
-      // Data biner dari browser adalah Raw PCM 16kHz (Int16)
-      // Gabungkan ke buffer dan potong per 960 sample (60ms = 1920 bytes)
       pcmInputBuffer = Buffer.concat([pcmInputBuffer, data]);
 
       while (pcmInputBuffer.length >= FRAME_BYTES_16K) {
@@ -267,7 +301,6 @@ wss.on('connection', (clientWs) => {
       console.log('📤 [Browser -> XiaoZhi]:', text);
 
       if (text.includes('"type":"listen"') && text.includes('"state":"stop"')) {
-        // Jika user stop bicara, flush sisa buffer jika ada dengan padding silence
         if (pcmInputBuffer.length > 0) {
           const padded = Buffer.alloc(FRAME_BYTES_16K);
           pcmInputBuffer.copy(padded, 0);
