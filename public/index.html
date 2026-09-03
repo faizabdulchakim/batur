@@ -603,11 +603,11 @@
         <div class="logo-badge">🧑</div>
         <div>
           <h1>XiaoZhi 3D Digital Human (BATUR)</h1>
-          <p>Native TalkingHead Neural Lip-Sync & Natural Gestures</p>
+          <p>Indonesian Syllable Coarticulation Lip-Sync Engine</p>
         </div>
       </div>
       <div class="header-badges">
-        <span class="audio-badge">✨ Native TalkingHead Engine</span>
+        <span class="audio-badge">✨ Vowel-Centric Syllable Engine</span>
         <div class="status-badge" id="statusBadge">
           <span class="status-dot connecting" id="statusDot"></span>
           <span id="statusText">Connecting...</span>
@@ -773,7 +773,6 @@
           cameraDistance: 0.65,
           cameraY: 0.05,
           cameraRotateSpeed: 0.5,
-          lipsyncModules: ['en', 'fi', 'de'],
           markedOptions: { mangle: false, headerIds: false }
         });
 
@@ -847,33 +846,95 @@
       if (text) oledText.innerText = text.toUpperCase();
     }
 
-    // ==========================================
-    // 🎭 NATIVE TALKINGHEAD SPEECH & LIP-SYNC
-    // ==========================================
+    // =========================================================================
+    // 👄 INDONESIAN & MULTILINGUAL SYLLABLE-COARTICULATION LIp-SYNC ENGINE
+    // =========================================================================
+    function textToIndonesianVisemes(text) {
+      const clean = text.toLowerCase()
+        .replace(/[\p{Extended_Pictographic}]/ug, ' ')
+        .replace(/[^a-z0-9\s]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      const words = clean.split(' ');
+      const visemes = [];
+      const durations = [];
+      const times = [];
+      let t = 0;
+
+      for (const word of words) {
+        if (!word) continue;
+
+        // Pisahkan kata menjadi suku kata berbasis vokal (Konsonan + Vokal + Konsonan)
+        const regex = /([bcdfghjklmnpqrstvwxyz]*)([aeiou]+)([bcdfghjklmnpqrstvwxyz]*)/gi;
+        let match;
+
+        while ((match = regex.exec(word)) !== null) {
+          if (match[0].length === 0) break;
+          const leadingC = match[1];
+          const vowel = match[2];
+          const trailingC = match[3];
+
+          // 1. Konsonan Awal (Leading Consonant)
+          if (leadingC) {
+            if (/^[bmp]/.test(leadingC)) {
+              visemes.push('PP'); durations.push(75); times.push(t); t += 75; // Mengatupkan bibir
+            } else if (/^[fv]/.test(leadingC)) {
+              visemes.push('FF'); durations.push(70); times.push(t); t += 70; // Gigi di bibir bawah
+            } else if (/^[tdnl]/.test(leadingC)) {
+              visemes.push('DD'); durations.push(65); times.push(t); t += 65; // Lidah di langit-langit
+            } else if (/^[szc]/.test(leadingC)) {
+              visemes.push('SS'); durations.push(70); times.push(t); t += 70; // Gigi merapat
+            } else if (/^[kg]/.test(leadingC)) {
+              visemes.push('kk'); durations.push(65); times.push(t); t += 65; // Pangkal lidah
+            } else if (/^[r]/.test(leadingC)) {
+              visemes.push('RR'); durations.push(65); times.push(t); t += 65; // Getar bibir/lidah
+            }
+          }
+
+          // 2. Vokal Inti (Core Vowel) - Bentuk utama mulut saat bersuara
+          if (vowel.includes('a')) {
+            visemes.push('aa'); durations.push(160); times.push(t); t += 160; // Mulut terbuka santai
+          } else if (vowel.includes('o')) {
+            visemes.push('O'); durations.push(150); times.push(t); t += 150; // Bibir membulat O
+          } else if (vowel.includes('u')) {
+            visemes.push('U'); durations.push(150); times.push(t); t += 150; // Bibir memaju U
+          } else if (vowel.includes('e')) {
+            visemes.push('E'); durations.push(140); times.push(t); t += 140; // Bibir melebar E
+          } else if (vowel.includes('i')) {
+            visemes.push('I'); durations.push(140); times.push(t); t += 140; // Bibir tersenyum I
+          }
+
+          // 3. Konsonan Akhir (Trailing Consonant)
+          if (trailingC) {
+            if (/^[bmp]/.test(trailingC)) {
+              visemes.push('PP'); durations.push(70); times.push(t); t += 70;
+            } else if (/^[tdnl]/.test(trailingC)) {
+              visemes.push('nn'); durations.push(65); times.push(t); t += 65;
+            } else if (/^[szc]/.test(trailingC)) {
+              visemes.push('SS'); durations.push(65); times.push(t); t += 65;
+            } else if (/^[kg]/.test(trailingC)) {
+              visemes.push('kk'); durations.push(65); times.push(t); t += 65;
+            }
+          }
+        }
+
+        // Jeda halus antar kata
+        visemes.push('sil'); durations.push(60); times.push(t); t += 60;
+      }
+
+      return { visemes, durations, times, totalDuration: t };
+    }
+
+    // Trigger Syllable-Accurate Lip-Sync on Avatar
     function triggerNativeLipSync(text) {
       if (!head || !isAvatarReady || !text) return;
 
       try {
-        // Bersihkan emoji dan pisahkan per kata
-        const cleanText = text.replace(/[\p{Extended_Pictographic}]/ug, '').trim();
-        const rawWords = cleanText.split(/\s+/).filter(w => w.length > 0);
-        if (rawWords.length === 0) return;
+        const syllableData = textToIndonesianVisemes(text);
+        if (!syllableData.visemes.length) return;
 
-        let words = [];
-        let wtimes = [];
-        let wdurations = [];
-        let curTime = 0;
-
-        // Hitung durasi waktu alami per kata (kecepatan bicara manusia ~80ms per karakter)
-        for (const w of rawWords) {
-          const dur = Math.max(220, Math.min(650, w.length * 85));
-          words.push(w);
-          wtimes.push(curTime);
-          wdurations.push(dur);
-          curTime += dur + 35; // jeda halus antar kata
-        }
-
-        const totalDurationMs = curTime + 200;
+        const totalDurationMs = syllableData.totalDuration + 200;
         const sampleRate = (head.audioCtx && head.audioCtx.sampleRate) || 24000;
         
         // Buat silent audio buffer agar queue internal TalkingHead aktif
@@ -884,20 +945,19 @@
           } catch(e) {}
         }
 
-        // Jalankan engine animasi kurva Hermite TalkingHead yang sangat halus & natural!
+        // Jalankan engine animasi kurva Hermite TalkingHead dengan suku kata Indonesia yang presisi!
         head.speakAudio({
           audio: silentBuffer,
-          words: words,
-          wtimes: wtimes,
-          wdurations: wdurations
+          visemes: syllableData.visemes,
+          vtimes: syllableData.times,
+          vdurations: syllableData.durations
         }, {
-          isRaw: true,
-          lipsyncLang: 'en'
+          isRaw: true
         });
 
-        console.log('🗣️ [Native TalkingHead LipSync Active]:', words.join(' '));
+        console.log(`🗣️ [Syllable LipSync]: ${syllableData.visemes.length} visemes for "${text.slice(0, 30)}..."`);
       } catch (err) {
-        console.warn('Native lip-sync error:', err);
+        console.warn('Syllable lip-sync error:', err);
       }
     }
 
@@ -1153,7 +1213,7 @@
               chatMessages.scrollTop = chatMessages.scrollHeight;
             }
 
-            // Panggil Native TalkingHead Lip-Sync Engine
+            // Panggil Native Syllable Lip-Sync Engine
             triggerNativeLipSync(msg.text);
           } else if (msg.state === 'stop') {
             currentAiBubble = null;
