@@ -897,32 +897,39 @@
       const promptText = 'Lihat objek pada foto ini. Benda apakah ini?';
       appendImageMessage('user', img, promptText);
 
-      // Unggah foto ke Vision API jika endpoint tersedia
-      if (visionEndpointUrl) {
-        await uploadImageToVision(img);
-      }
-
-      // Kirim pertanyaan audio secara langsung tanpa memicu wake-word collision
+      // Kirim pertanyaan audio langsung meminta XiaoZhi memotret dan menganalisis
       sendMessage(promptText, true);
     }
 
-    async function uploadImageToVision(dataUrl) {
+    async function uploadImageToVision(dataUrl, question = 'Jelaskan objek atau teks yang ada pada foto ini.') {
       try {
         const blob = await (await fetch(dataUrl)).blob();
-        console.log(`📤 Uploading image (${blob.size} bytes) to Vision endpoint...`);
-        
+        console.log(`📤 Mengunggah foto (${blob.size} bytes) dengan pertanyaan: "${question}"`);
+
+        const formData = new FormData();
+        formData.append('question', question);
+        formData.append('file', blob, 'camera.jpg');
+
         const uploadRes = await fetch('/api/upload-vision', {
           method: 'POST',
           headers: {
-            'Content-Type': 'image/jpeg',
             'x-target-url': visionEndpointUrl || 'https://api.tenclass.net/xiaozhi/mcp/vision/explain',
             'Authorization': visionToken ? `Bearer ${visionToken}` : ''
           },
-          body: blob
+          body: formData
         });
-        console.log('📸 Upload status:', uploadRes.status);
+
+        const respText = await uploadRes.text();
+        console.log('📸 Vision API Raw Response:', respText);
+        try {
+          const json = JSON.parse(respText);
+          return json.text || json.result || json.description || json.explanation || json.message || respText;
+        } catch (e) {
+          return respText;
+        }
       } catch (e) {
         console.warn('Vision upload error:', e);
+        return `Foto berhasil diambil namun gagal diproses: ${e.message}`;
       }
     }
 
@@ -1142,7 +1149,6 @@
           break;
 
         case 'stt':
-          // Hanya tampilkan jika ucapan dari mic (bukan dari text yang baru diketik)
           if (msg.text && msg.text !== lastSentText && msg.text.toLowerCase() !== 'xiaozhi') {
             appendMessage('user', msg.text);
           }
@@ -1150,7 +1156,6 @@
           break;
 
         case 'llm':
-          // Hanya update emosi dari LLM, teks ditampilkan saat TTS sentence_start agar tidak dobel
           if (msg.emotion) {
             setScreenEmotion(msg.emotion, msg.text ? msg.text.slice(0, 16) : 'THINKING');
           }
@@ -1162,7 +1167,6 @@
             nextPlayTime = playCtx ? playCtx.currentTime : 0;
             setScreenEmotion('talking', 'SPEAKING...');
           } else if (msg.state === 'sentence_start' && msg.text) {
-            // Tampilkan teks AI satu kali per kalimat saat mulai diucapkan
             if (!currentAiBubble) {
               currentAiBubble = appendMessage('ai', msg.text);
             } else {
@@ -1228,7 +1232,12 @@
                 {
                   name: 'self.camera.take_photo',
                   description: 'Ambil foto dari kamera untuk menganalisis objek atau teks di depan pengguna',
-                  inputSchema: { type: 'object', properties: {} }
+                  inputSchema: {
+                    type: 'object',
+                    properties: {
+                      question: { type: 'string', description: 'Pertanyaan terkait gambar yang ingin dianalisis' }
+                    }
+                  }
                 }
               ]
             }
@@ -1239,17 +1248,20 @@
       if (method === 'tools/call') {
         const toolName = payload.params?.name;
         if (toolName === 'self.camera.take_photo' || toolName === 'self.camera.explain_image') {
-          showSystemMsg('📸 XiaoZhi Vision AI mengambil foto...');
+          showSystemMsg('📸 XiaoZhi Vision AI menganalisis jepretan kamera...');
           scanLine.style.display = 'block';
 
           if (!isCamActive) await startWebcam();
           const img = captureJpegFrame();
 
-          if (img && visionEndpointUrl) {
-            await uploadImageToVision(img);
+          let explanationText = 'Foto berhasil diambil.';
+          const questionText = payload.params?.question || payload.params?.prompt || lastSentText || 'Apa objek atau tulisan yang terlihat pada foto ini? Jelaskan secara detail.';
+
+          if (img) {
+            explanationText = await uploadImageToVision(img, questionText);
           }
 
-          setTimeout(() => { scanLine.style.display = 'none'; }, 2000);
+          setTimeout(() => { scanLine.style.display = 'none'; }, 1500);
 
           ws.send(JSON.stringify({
             type: 'mcp',
@@ -1257,7 +1269,7 @@
               jsonrpc: '2.0',
               id: id,
               result: {
-                content: [{ type: 'text', text: 'Photo successfully captured and uploaded to vision endpoint.' }]
+                content: [{ type: 'text', text: explanationText || 'Foto berhasil dianalisis.' }]
               }
             }
           }));
@@ -1335,7 +1347,6 @@
           int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
         }
 
-        // Hentikan audio sebelumnya dan langsung buka listening session tanpa wake-word collision
         ws.send(JSON.stringify({ type: 'abort', session_id: currentSessionId }));
         ws.send(JSON.stringify({ type: 'listen', state: 'start', mode: 'manual' }));
 

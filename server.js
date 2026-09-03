@@ -28,7 +28,7 @@ const mimeTypes = {
 const server = http.createServer(async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-target-url');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-target-url, Device-Id, Client-Id');
 
   if (req.method === 'OPTIONS') {
     res.writeHead(204);
@@ -58,26 +58,35 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
-  // API: Vision Image Upload Proxy (for Camera MCP Vision AI)
+  // API: Vision Image Upload Proxy (Multipart form-data forwarding)
   if (url.pathname === '/api/upload-vision' && req.method === 'POST') {
+    let config = {};
+    if (fs.existsSync(CONFIG_FILE)) {
+      try {
+        config = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
+      } catch (e) {}
+    }
+
     const targetUrl = req.headers['x-target-url'] || 'https://api.tenclass.net/xiaozhi/mcp/vision/explain';
-    const authHeader = req.headers['authorization'] || '';
-    const contentType = req.headers['content-type'] || 'image/jpeg';
+    const authHeader = req.headers['authorization'] || (config.ws_token ? `Bearer ${config.ws_token}` : '');
+    const contentType = req.headers['content-type'] || 'multipart/form-data';
 
     const chunks = [];
     req.on('data', chunk => chunks.push(chunk));
     req.on('end', async () => {
-      const imageBuffer = Buffer.concat(chunks);
-      console.log(`📸 [Vision Upload Proxy] Mengunggah foto (${imageBuffer.length} bytes) ke: ${targetUrl}`);
+      const bodyBuffer = Buffer.concat(chunks);
+      console.log(`📸 [Vision Upload Proxy] Mengunggah data (${bodyBuffer.length} bytes) ke: ${targetUrl}`);
 
       try {
         const uploadRes = await fetch(targetUrl, {
           method: 'POST',
           headers: {
             'Content-Type': contentType,
-            'Authorization': authHeader
+            'Authorization': authHeader,
+            'Device-Id': config.mac_address || '24:dc:c3:00:00:01',
+            'Client-Id': config.client_id || 'default-client-id'
           },
-          body: imageBuffer
+          body: bodyBuffer
         });
 
         const respText = await uploadRes.text();
