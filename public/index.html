@@ -8,13 +8,14 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 
-  <!-- Three.js and Local TalkingHead Import Map -->
+  <!-- Three.js, TalkingHead, and Indonesian Lip-Sync Import Map -->
   <script type="importmap">
   {
     "imports": {
       "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js/+esm",
       "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/",
-      "talkinghead": "./modules/talkinghead.mjs"
+      "talkinghead": "./modules/talkinghead.mjs",
+      "lipsync-id": "./modules/lipsync-id.mjs"
     }
   }
   </script>
@@ -603,11 +604,11 @@
         <div class="logo-badge">🧑</div>
         <div>
           <h1>XiaoZhi 3D Digital Human (BATUR)</h1>
-          <p>Indonesian Syllable Coarticulation Lip-Sync Engine</p>
+          <p>Indonesian Syllable Lip-Sync & Natural Gestures</p>
         </div>
       </div>
       <div class="header-badges">
-        <span class="audio-badge">✨ Vowel-Centric Syllable Engine</span>
+        <span class="audio-badge">🇮🇩 Indonesian LipSync Active</span>
         <div class="status-badge" id="statusBadge">
           <span class="status-dot connecting" id="statusDot"></span>
           <span id="statusText">Connecting...</span>
@@ -704,6 +705,7 @@
   <!-- Main Interactive Script (ES Module with TalkingHead) -->
   <script type="module">
     import { TalkingHead } from "talkinghead";
+    import { LipsyncId } from "lipsync-id";
 
     let ws = null;
     let config = null;
@@ -712,10 +714,11 @@
     let currentAiBubble = null;
     let lastSentText = null;
 
-    // TalkingHead 3D Avatar Instance
+    // TalkingHead 3D Avatar Instance & Indonesian Phonetics Engine
     let head = null;
     let isAvatarReady = false;
     let currentMood = 'neutral';
+    const lipsyncId = new LipsyncId();
 
     // Web Audio Variables for Real Opus Playback (24kHz Mono)
     let playCtx = null;
@@ -847,117 +850,54 @@
     }
 
     // =========================================================================
-    // 👄 INDONESIAN & MULTILINGUAL SYLLABLE-COARTICULATION LIp-SYNC ENGINE
+    // 👄 NATIVE INDONESIAN LIP-SYNC ENGINE (Direct animQueue Execution)
     // =========================================================================
-    function textToIndonesianVisemes(text) {
-      const clean = text.toLowerCase()
-        .replace(/[\p{Extended_Pictographic}]/ug, ' ')
-        .replace(/[^a-z0-9\s]/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-
-      const words = clean.split(' ');
-      const visemes = [];
-      const durations = [];
-      const times = [];
-      let t = 0;
-
-      for (const word of words) {
-        if (!word) continue;
-
-        // Pisahkan kata menjadi suku kata berbasis vokal (Konsonan + Vokal + Konsonan)
-        const regex = /([bcdfghjklmnpqrstvwxyz]*)([aeiou]+)([bcdfghjklmnpqrstvwxyz]*)/gi;
-        let match;
-
-        while ((match = regex.exec(word)) !== null) {
-          if (match[0].length === 0) break;
-          const leadingC = match[1];
-          const vowel = match[2];
-          const trailingC = match[3];
-
-          // 1. Konsonan Awal (Leading Consonant)
-          if (leadingC) {
-            if (/^[bmp]/.test(leadingC)) {
-              visemes.push('PP'); durations.push(75); times.push(t); t += 75; // Mengatupkan bibir
-            } else if (/^[fv]/.test(leadingC)) {
-              visemes.push('FF'); durations.push(70); times.push(t); t += 70; // Gigi di bibir bawah
-            } else if (/^[tdnl]/.test(leadingC)) {
-              visemes.push('DD'); durations.push(65); times.push(t); t += 65; // Lidah di langit-langit
-            } else if (/^[szc]/.test(leadingC)) {
-              visemes.push('SS'); durations.push(70); times.push(t); t += 70; // Gigi merapat
-            } else if (/^[kg]/.test(leadingC)) {
-              visemes.push('kk'); durations.push(65); times.push(t); t += 65; // Pangkal lidah
-            } else if (/^[r]/.test(leadingC)) {
-              visemes.push('RR'); durations.push(65); times.push(t); t += 65; // Getar bibir/lidah
-            }
-          }
-
-          // 2. Vokal Inti (Core Vowel) - Bentuk utama mulut saat bersuara
-          if (vowel.includes('a')) {
-            visemes.push('aa'); durations.push(160); times.push(t); t += 160; // Mulut terbuka santai
-          } else if (vowel.includes('o')) {
-            visemes.push('O'); durations.push(150); times.push(t); t += 150; // Bibir membulat O
-          } else if (vowel.includes('u')) {
-            visemes.push('U'); durations.push(150); times.push(t); t += 150; // Bibir memaju U
-          } else if (vowel.includes('e')) {
-            visemes.push('E'); durations.push(140); times.push(t); t += 140; // Bibir melebar E
-          } else if (vowel.includes('i')) {
-            visemes.push('I'); durations.push(140); times.push(t); t += 140; // Bibir tersenyum I
-          }
-
-          // 3. Konsonan Akhir (Trailing Consonant)
-          if (trailingC) {
-            if (/^[bmp]/.test(trailingC)) {
-              visemes.push('PP'); durations.push(70); times.push(t); t += 70;
-            } else if (/^[tdnl]/.test(trailingC)) {
-              visemes.push('nn'); durations.push(65); times.push(t); t += 65;
-            } else if (/^[szc]/.test(trailingC)) {
-              visemes.push('SS'); durations.push(65); times.push(t); t += 65;
-            } else if (/^[kg]/.test(trailingC)) {
-              visemes.push('kk'); durations.push(65); times.push(t); t += 65;
-            }
-          }
-        }
-
-        // Jeda halus antar kata
-        visemes.push('sil'); durations.push(60); times.push(t); t += 60;
-      }
-
-      return { visemes, durations, times, totalDuration: t };
-    }
-
-    // Trigger Syllable-Accurate Lip-Sync on Avatar
     function triggerNativeLipSync(text) {
       if (!head || !isAvatarReady || !text) return;
 
       try {
-        const syllableData = textToIndonesianVisemes(text);
-        if (!syllableData.visemes.length) return;
+        const cleanText = lipsyncId.preProcessText(text);
+        const res = lipsyncId.wordsToVisemes(cleanText);
+        if (!res || !res.visemes || !res.visemes.length) return;
 
-        const totalDurationMs = syllableData.totalDuration + 200;
-        const sampleRate = (head.audioCtx && head.audioCtx.sampleRate) || 24000;
-        
-        // Buat silent audio buffer agar queue internal TalkingHead aktif
-        let silentBuffer = null;
-        if (head.audioCtx) {
-          try {
-            silentBuffer = head.audioCtx.createBuffer(1, Math.max(100, Math.floor(totalDurationMs * sampleRate / 1000)), sampleRate);
-          } catch(e) {}
+        // Ambil clock animasi 3D Three.js yang sedang berjalan (60 FPS)
+        const baseClock = head.animClock || 0;
+        // Skala waktu per fonem bahasa Indonesia (~100ms - 110ms per suku kata)
+        const TIME_SCALE = 100;
+
+        for (let i = 0; i < res.visemes.length; i++) {
+          const viseme = res.visemes[i];
+          const startT = baseClock + (res.times[i] * TIME_SCALE);
+          const dur = (res.durations[i] || 1) * TIME_SCALE;
+          const peakT = startT + dur * 0.45;
+          const endT = startT + dur;
+
+          // Bobot anatomi mulut alami:
+          // P/B/M mengatup rapat (0.85), F/V (0.75), Vokal membuka luas (0.65)
+          const weight = (viseme === 'PP' || viseme === 'FF') ? 0.85 : 0.65;
+
+          head.animQueue.push({
+            template: { name: 'viseme' },
+            ts: [startT, peakT, endT],
+            vs: {
+              ['viseme_' + viseme]: [null, weight, 0]
+            }
+          });
         }
 
-        // Jalankan engine animasi kurva Hermite TalkingHead dengan suku kata Indonesia yang presisi!
-        head.speakAudio({
-          audio: silentBuffer,
-          visemes: syllableData.visemes,
-          vtimes: syllableData.times,
-          vdurations: syllableData.durations
-        }, {
-          isRaw: true
+        // Animasi kepala mengangguk alami saat berbicara
+        const totalDuration = (res.times[res.times.length - 1] + res.durations[res.durations.length - 1]) * TIME_SCALE;
+        head.animQueue.push({
+          template: { name: 'headmove' },
+          ts: [baseClock, baseClock + totalDuration * 0.35, baseClock + totalDuration * 0.70, baseClock + totalDuration],
+          vs: {
+            headRotateX: [null, 0.02, -0.015, 0]
+          }
         });
 
-        console.log(`🗣️ [Syllable LipSync]: ${syllableData.visemes.length} visemes for "${text.slice(0, 30)}..."`);
+        console.log(`🗣️ [Indonesian Lip-Sync]: ${res.visemes.length} visemes queued directly for "${cleanText.slice(0, 30)}..."`);
       } catch (err) {
-        console.warn('Syllable lip-sync error:', err);
+        console.warn('Lip-sync error:', err);
       }
     }
 
@@ -1213,7 +1153,7 @@
               chatMessages.scrollTop = chatMessages.scrollHeight;
             }
 
-            // Panggil Native Syllable Lip-Sync Engine
+            // Panggil Native Indonesian Lip-Sync Engine
             triggerNativeLipSync(msg.text);
           } else if (msg.state === 'stop') {
             currentAiBubble = null;
