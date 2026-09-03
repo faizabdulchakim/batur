@@ -14,7 +14,8 @@
     "imports": {
       "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js/+esm",
       "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/",
-      "talkinghead": "./modules/talkinghead.mjs"
+      "talkinghead": "./modules/talkinghead.mjs",
+      "lipsync-en": "./modules/lipsync-en.mjs"
     }
   }
   </script>
@@ -607,7 +608,7 @@
         </div>
       </div>
       <div class="header-badges">
-        <span class="audio-badge">✨ Auto-VAD & 3D Lip-Sync</span>
+        <span class="audio-badge">✨ Realistic Phoneme Lip-Sync</span>
         <div class="status-badge" id="statusBadge">
           <span class="status-dot connecting" id="statusDot"></span>
           <span id="statusText">Connecting...</span>
@@ -705,6 +706,7 @@
   <!-- Main Interactive Script (ES Module with TalkingHead) -->
   <script type="module">
     import { TalkingHead } from "talkinghead";
+    import { LipsyncEn } from "lipsync-en";
 
     let ws = null;
     let config = null;
@@ -713,9 +715,23 @@
     let currentAiBubble = null;
     let lastSentText = null;
 
-    // TalkingHead 3D Avatar Instance
+    // TalkingHead & Lipsync Instance
     let head = null;
     let isAvatarReady = false;
+    const phonemeEngine = new LipsyncEn();
+
+    // Viseme Tracking Timeline for Natural Speech
+    let activeVisemes = [];
+    let activeVisemeTimes = [];
+    let speechStartTime = 0;
+    let isSpeakingAudio = false;
+
+    // Supported Blendshape Visemes in Model
+    const oculusVisemes = [
+      'viseme_aa', 'viseme_E', 'viseme_I', 'viseme_O', 'viseme_U',
+      'viseme_PP', 'viseme_FF', 'viseme_TH', 'viseme_DD', 'viseme_kk',
+      'viseme_CH', 'viseme_SS', 'viseme_nn', 'viseme_RR', 'viseme_sil'
+    ];
 
     // Web Audio Variables for Real Opus Playback (24kHz Mono)
     let playCtx = null;
@@ -729,10 +745,6 @@
     let hasSpoken = false;
     let lastVoiceTime = 0;
     let currentMood = 'neutral';
-
-    // Lip-Sync blendshapes array
-    const visemeNames = ['viseme_aa', 'viseme_E', 'viseme_I', 'viseme_O', 'viseme_U', 'jawOpen', 'mouthOpen'];
-    let visemeIndex = 0;
 
     // DOM Elements
     const statusDot = document.getElementById('statusDot');
@@ -857,39 +869,94 @@
       if (text) oledText.innerText = text.toUpperCase();
     }
 
-    // Direct Real-Time 3D Lip-Sync Driver
+    // Convert Sentence into Precise Viseme Sequence
+    function prepareSentenceLipSync(text) {
+      if (!text) return;
+      try {
+        const cleanText = text.replace(/[\p{Extended_Pictographic}]/ug, '').trim();
+        const res = phonemeEngine.wordsToVisemes(cleanText);
+        if (res && res.visemes && res.visemes.length) {
+          activeVisemes = res.visemes;
+          activeVisemeTimes = [];
+          let t = 0;
+          for (let i = 0; i < res.durations.length; i++) {
+            activeVisemeTimes.push(t);
+            // Standar durasi per fonem manusia: ~90ms - 110ms
+            t += (res.durations[i] || 1) * 95;
+          }
+          speechStartTime = Date.now();
+          isSpeakingAudio = true;
+        }
+      } catch (e) {
+        console.warn('Phoneme conversion fallback:', e);
+      }
+    }
+
+    // Natural Realistic Phoneme-based Lip-Sync Driver (No Yawning!)
     function driveAvatarLipSync(float32Data) {
       if (!head || !isAvatarReady) return;
 
-      // Hitung RMS audio amplitude
+      // Hitung RMS Amplitudo Suara
       let sum = 0;
       for (let i = 0; i < float32Data.length; i++) {
         sum += float32Data[i] * float32Data[i];
       }
       const rms = Math.sqrt(sum / float32Data.length);
-      const volume = Math.min(1.0, rms * 14.0);
 
-      try {
-        if (volume > 0.04) {
-          const vName = visemeNames[visemeIndex % visemeNames.length];
-          visemeIndex++;
-
-          // Buka mulut dan gerakkan blendshapes bibir
-          head.setValue('jawOpen', volume * 0.75, 50);
-          head.setValue('mouthOpen', volume * 0.85, 50);
-          head.setValue(vName, volume * 0.9, 50);
-
-          // Gerakan kepala mengangguk halus saat berbicara
-          head.setValue('headRotateX', 0.025 * Math.sin(Date.now() / 120), 50);
-        } else {
-          // Tutup mulut kembali saat jeda hening
-          head.setValue('jawOpen', 0, 70);
-          head.setValue('mouthOpen', 0, 70);
-          visemeNames.forEach(v => head.setValue(v, 0, 70));
-          head.setValue('headRotateX', 0, 100);
+      // Jika ada suara di atas ambang batas (bicara aktif)
+      if (rms > 0.015 && activeVisemes.length > 0) {
+        if (!isSpeakingAudio) {
+          isSpeakingAudio = true;
+          speechStartTime = Date.now();
         }
-      } catch (e) {
-        console.warn('LipSync setValue error:', e);
+
+        const elapsed = (Date.now() - speechStartTime) % (activeVisemeTimes[activeVisemeTimes.length - 1] + 200);
+
+        // Cari fonem viseme yang sedang aktif berdasarkan waktu
+        let currentViseme = 'aa';
+        for (let i = activeVisemeTimes.length - 1; i >= 0; i--) {
+          if (elapsed >= activeVisemeTimes[i]) {
+            currentViseme = activeVisemes[i];
+            break;
+          }
+        }
+
+        const vol = Math.min(1.0, rms * 8.0);
+        
+        // 🔒 BATAS REALISTIS (Mencegah mulut terbuka lebar seperti menguap):
+        // Jaw open dibatasi max 0.22 (bukan 0.8!)
+        // Mouth open dibatasi max 0.25
+        const jawAmount = Math.min(0.22, vol * 0.26);
+        const mouthAmount = Math.min(0.25, vol * 0.30);
+        const visemeWeight = Math.min(0.65, vol * 0.70);
+
+        try {
+          // Tutup viseme lain yang tidak aktif secara lembut
+          oculusVisemes.forEach(v => {
+            if (v !== 'viseme_' + currentViseme) {
+              head.setValue(v, 0, 45);
+            }
+          });
+
+          // Terapkan viseme yang sesuai dengan pengucapan kata
+          head.setValue('viseme_' + currentViseme, visemeWeight, 45);
+          head.setValue('jawOpen', jawAmount, 45);
+          head.setValue('mouthOpen', mouthAmount, 45);
+
+          // Gerakan kepala berbicara natural yang halus
+          head.setValue('headRotateX', 0.018 * Math.sin(Date.now() / 160), 45);
+          head.setValue('headRotateY', 0.012 * Math.cos(Date.now() / 240), 45);
+        } catch (e) {}
+      } else {
+        // Saat jeda hening / selesai: tutup mulut kembali ke posisi istirahat
+        isSpeakingAudio = false;
+        try {
+          oculusVisemes.forEach(v => head.setValue(v, 0, 60));
+          head.setValue('jawOpen', 0, 60);
+          head.setValue('mouthOpen', 0, 60);
+          head.setValue('headRotateX', 0, 90);
+          head.setValue('headRotateY', 0, 90);
+        } catch (e) {}
       }
     }
 
@@ -915,7 +982,7 @@
         float32[i] = int16[i] / 32768.0;
       }
 
-      // 1. Gerakkan bibir avatar 3D secara sinkron
+      // 1. Gerakkan bibir 3D dengan fonem yang natural
       driveAvatarLipSync(float32);
 
       // 2. Mainkan audio ke speaker
@@ -937,12 +1004,12 @@
       ttsTimer = setTimeout(() => {
         avatarEyes.classList.remove('talking');
         if (head && isAvatarReady) {
-          visemeNames.forEach(v => head.setValue(v, 0, 100));
-          head.setValue('jawOpen', 0, 100);
-          head.setValue('mouthOpen', 0, 100);
+          oculusVisemes.forEach(v => head.setValue(v, 0, 80));
+          head.setValue('jawOpen', 0, 80);
+          head.setValue('mouthOpen', 0, 80);
         }
         setAvatarEmotion(currentMood, 'READY');
-      }, 800);
+      }, 700);
     }
 
     // ==========================================
@@ -1153,6 +1220,9 @@
               currentAiBubble.innerText += ' ' + msg.text;
               chatMessages.scrollTop = chatMessages.scrollHeight;
             }
+
+            // Siapkan timeline fonem viseme yang natural untuk kalimat ini
+            prepareSentenceLipSync(msg.text);
           } else if (msg.state === 'stop') {
             currentAiBubble = null;
             setAvatarEmotion('neutral', 'IDLE');
@@ -1250,6 +1320,7 @@
     window.sendAbort = function() {
       if (ws && ws.readyState === WebSocket.OPEN) {
         if (playCtx) nextPlayTime = playCtx.currentTime;
+        if (head && isAvatarReady) { try { head.stopSpeaking(); } catch (e) {} }
         showSystemMsg('🛑 Mengirim sinyal Abort / Interruption...');
         setAvatarEmotion('neutral', 'ABORTED');
         currentAiBubble = null;
