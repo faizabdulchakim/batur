@@ -530,6 +530,7 @@
       padding: 0;
       border-radius: 10px;
       font-size: 18px;
+      position: relative;
     }
 
     .btn-mic:hover {
@@ -606,7 +607,7 @@
         </div>
       </div>
       <div class="header-badges">
-        <span class="audio-badge">✨ 3D Lip-Sync Ready</span>
+        <span class="audio-badge">✨ Auto-VAD & 3D Lip-Sync</span>
         <div class="status-badge" id="statusBadge">
           <span class="status-dot connecting" id="statusDot"></span>
           <span id="statusText">Connecting...</span>
@@ -636,7 +637,7 @@
           <div id="avatarNode"></div>
           <div class="avatar-loading" id="avatarLoading">
             <div class="spinner"></div>
-            <span>Memuat Avatar 3D (Lokal)...</span>
+            <span>Memuat Avatar 3D...</span>
           </div>
         </div>
 
@@ -686,12 +687,12 @@
 
         <div class="chat-messages" id="chatMessages">
           <div class="msg-bubble msg-system">
-            👋 Selamat datang! Avatar 3D terhubung langsung dengan backend XiaoZhi. Silakan gunakan <b>🎙️ Mic PC</b> atau ketik pertanyaan di kotak chat untuk melihat animasi bibir (*Lip-Sync*) dan mimik wajahnya!
+            👋 Selamat datang! Klik tombol <b>🎙️ Mic</b> dan bicaralah. Saat Anda selesai bicara (jeda 1 detik), sistem akan <b>otomatis memproses suara Anda</b> tanpa perlu klik mic lagi!
           </div>
         </div>
 
         <div class="chat-input-row">
-          <button id="btnMic" class="btn btn-mic" onclick="toggleMicrophone()" title="Klik untuk berbicara lewat mic PC">
+          <button id="btnMic" class="btn btn-mic" onclick="toggleMicrophone()" title="Klik untuk berbicara (otomatis jeda hening)">
             🎙️
           </button>
           <input type="text" id="chatInput" class="chat-input" placeholder="Ketik atau klik tombol Mic untuk bicara..." onkeypress="handleKeyPress(event)">
@@ -720,11 +721,18 @@
     let playCtx = null;
     let nextPlayTime = 0;
 
-    // Web Audio Variables for Mic Recording (16kHz Mono PCM)
+    // Web Audio Variables for Mic Recording (16kHz Mono PCM) with Auto-VAD
     let micCtx = null;
     let micStream = null;
     let micProcessor = null;
     let isRecording = false;
+    let hasSpoken = false;
+    let lastVoiceTime = 0;
+    let currentMood = 'neutral';
+
+    // Lip-Sync blendshapes array
+    const visemeNames = ['viseme_aa', 'viseme_E', 'viseme_I', 'viseme_O', 'viseme_U', 'jawOpen', 'mouthOpen'];
+    let visemeIndex = 0;
 
     // DOM Elements
     const statusDot = document.getElementById('statusDot');
@@ -789,7 +797,6 @@
         showSystemMsg('🧑 Avatar 3D siap berinteraksi!');
       } catch (err) {
         console.error('❌ Failed to load 3D Avatar:', err);
-        // If external model failed, try local fallback
         if (modelKey !== 'brunette') {
           console.log('🔄 Trying fallback to local avatar...');
           await init3DAvatar('brunette');
@@ -837,6 +844,7 @@
         icon = '😢'; label = 'SAD'; mood = 'sad';
       }
 
+      currentMood = mood;
       emotionIcon.innerText = icon;
       emotionText.innerText = label;
 
@@ -847,6 +855,42 @@
       // OLED Fallback
       avatarEyes.className = 'avatar-eyes ' + (mood || '');
       if (text) oledText.innerText = text.toUpperCase();
+    }
+
+    // Direct Real-Time 3D Lip-Sync Driver
+    function driveAvatarLipSync(float32Data) {
+      if (!head || !isAvatarReady) return;
+
+      // Hitung RMS audio amplitude
+      let sum = 0;
+      for (let i = 0; i < float32Data.length; i++) {
+        sum += float32Data[i] * float32Data[i];
+      }
+      const rms = Math.sqrt(sum / float32Data.length);
+      const volume = Math.min(1.0, rms * 14.0);
+
+      try {
+        if (volume > 0.04) {
+          const vName = visemeNames[visemeIndex % visemeNames.length];
+          visemeIndex++;
+
+          // Buka mulut dan gerakkan blendshapes bibir
+          head.setValue('jawOpen', volume * 0.75, 50);
+          head.setValue('mouthOpen', volume * 0.85, 50);
+          head.setValue(vName, volume * 0.9, 50);
+
+          // Gerakan kepala mengangguk halus saat berbicara
+          head.setValue('headRotateX', 0.025 * Math.sin(Date.now() / 120), 50);
+        } else {
+          // Tutup mulut kembali saat jeda hening
+          head.setValue('jawOpen', 0, 70);
+          head.setValue('mouthOpen', 0, 70);
+          visemeNames.forEach(v => head.setValue(v, 0, 70));
+          head.setValue('headRotateX', 0, 100);
+        }
+      } catch (e) {
+        console.warn('LipSync setValue error:', e);
+      }
     }
 
     // ==========================================
@@ -871,6 +915,10 @@
         float32[i] = int16[i] / 32768.0;
       }
 
+      // 1. Gerakkan bibir avatar 3D secara sinkron
+      driveAvatarLipSync(float32);
+
+      // 2. Mainkan audio ke speaker
       const audioBuffer = playCtx.createBuffer(1, float32.length, 24000);
       audioBuffer.getChannelData(0).set(float32);
 
@@ -888,12 +936,17 @@
       clearTimeout(ttsTimer);
       ttsTimer = setTimeout(() => {
         avatarEyes.classList.remove('talking');
-        setAvatarEmotion('neutral', 'READY');
-      }, 1000);
+        if (head && isAvatarReady) {
+          visemeNames.forEach(v => head.setValue(v, 0, 100));
+          head.setValue('jawOpen', 0, 100);
+          head.setValue('mouthOpen', 0, 100);
+        }
+        setAvatarEmotion(currentMood, 'READY');
+      }, 800);
     }
 
     // ==========================================
-    // 🎙️ MICROPHONE RECORDING & STREAMING
+    // 🎙️ MICROPHONE RECORDING & AUTO-VAD
     // ==========================================
     window.toggleMicrophone = async function() {
       initPlaybackAudio();
@@ -920,10 +973,13 @@
         micProcessor = micCtx.createScriptProcessor(2048, 1, 1);
 
         isRecording = true;
+        hasSpoken = false;
+        lastVoiceTime = Date.now();
+
         btnMic.classList.add('recording');
         btnMic.innerText = '🔴';
         setAvatarEmotion('thinking', 'MENDENGARKAN...');
-        chatInput.placeholder = 'Sedang mendengarkan suara Anda... (Klik mic lagi untuk selesai)';
+        chatInput.placeholder = 'Silakan bicara... (Otomatis selesai saat jeda hening)';
 
         ws.send(JSON.stringify({ type: 'abort', session_id: currentSessionId }));
         ws.send(JSON.stringify({ type: 'listen', state: 'start', mode: 'manual' }));
@@ -932,10 +988,28 @@
           if (!isRecording) return;
           const float32 = e.inputBuffer.getChannelData(0);
           const int16 = new Int16Array(float32.length);
+
+          let sum = 0;
           for (let i = 0; i < float32.length; i++) {
             const s = Math.max(-1, Math.min(1, float32[i]));
             int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+            sum += s * s;
           }
+
+          // Voice Activity Detection (VAD)
+          const micRms = Math.sqrt(sum / float32.length);
+          if (micRms > 0.025) {
+            hasSpoken = true;
+            lastVoiceTime = Date.now();
+          }
+
+          // Auto-stop jika pengguna sudah berbicara dan hening selama 1.2 detik
+          if (hasSpoken && (Date.now() - lastVoiceTime > 1200)) {
+            console.log('🎙️ [Auto-VAD] Hening terdeteksi, memproses pertanyaan...');
+            stopMicrophone();
+            return;
+          }
+
           if (ws && ws.readyState === WebSocket.OPEN) {
             ws.send(int16.buffer);
           }
@@ -1079,13 +1153,6 @@
               currentAiBubble.innerText += ' ' + msg.text;
               chatMessages.scrollTop = chatMessages.scrollHeight;
             }
-
-            // Animate TalkingHead Lip-Sync & Visemes
-            if (head && isAvatarReady) {
-              try {
-                head.speakText(msg.text, { ttsLang: micLangSelect.value || "id" });
-              } catch (e) {}
-            }
           } else if (msg.state === 'stop') {
             currentAiBubble = null;
             setAvatarEmotion('neutral', 'IDLE');
@@ -1183,7 +1250,6 @@
     window.sendAbort = function() {
       if (ws && ws.readyState === WebSocket.OPEN) {
         if (playCtx) nextPlayTime = playCtx.currentTime;
-        if (head && isAvatarReady) { try { head.stopSpeaking(); } catch (e) {} }
         showSystemMsg('🛑 Mengirim sinyal Abort / Interruption...');
         setAvatarEmotion('neutral', 'ABORTED');
         currentAiBubble = null;
