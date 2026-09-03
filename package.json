@@ -1,0 +1,25 @@
+{
+  "name": "batur",
+  "version": "1.0.0",
+  "description": "XiaoZhi (xiaozhi.me) Device Simulator and Web Chatbot in Node.js",
+  "main": "1_init_device.js",
+  "type": "module",
+  "scripts": {
+    "init": "node 1_init_device.js",
+    "chat": "node 2_chatbot.js",
+    "web": "node server.js"
+  },
+  "keywords": [
+    "xiaozhi",
+    "esp32",
+    "simulator",
+    "websocket",
+    "ai-voice"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "opusscript": "^0.1.1",
+    "ws": "^8.18.0"
+  }
+}

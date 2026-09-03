@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>XiaoZhi (小智 AI) - Device Simulator & Voice Chatbot</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #0d1117;
+      --card-bg: rgba(22, 27, 34, 0.85);
+      --border-color: rgba(240, 246, 252, 0.1);
+      --accent: #58a6ff;
+      --accent-glow: rgba(88, 166, 255, 0.25);
+      --success: #3fb950;
+      --warning: #d29922;
+      --danger: #f85149;
+      --mic-active: #ea4a5a;
+      --text-main: #f0f6fc;
+      --text-dim: #8b949e;
+      --oled-bg: #000000;
+      --oled-glow: #00f0ff;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: radial-gradient(circle at top right, #161b22, #090d13 80%);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 980px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 16px 24px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-badge {
+      width: 44px;
+      height: 44px;
+      background: linear-gradient(135deg, #1f6feb, #8957e5);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      box-shadow: 0 0 15px var(--accent-glow);
+    }
+
+    .brand h1 {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .brand p {
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 500;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--text-dim);
+    }
+
+    .status-dot.connected {
+      background: var(--success);
+      box-shadow: 0 0 8px var(--success);
+    }
+
+    .status-dot.connecting {
+      background: var(--warning);
+      box-shadow: 0 0 8px var(--warning);
+      animation: pulse 1s infinite alternate;
+    }
+
+    .status-dot.disconnected {
+      background: var(--danger);
+      box-shadow: 0 0 8px var(--danger);
+    }
+
+    @keyframes pulse {
+      from { opacity: 0.4; }
+      to { opacity: 1; }
+    }
+
+    .main-grid {
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 800px) {
+      .main-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* OLED Screen Section */
+    .device-screen-box {
+      background: var(--oled-bg);
+      border: 3px solid #30363d;
+      border-radius: 18px;
+      padding: 24px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 190px;
+      box-shadow: inset 0 0 20px rgba(0, 240, 255, 0.08);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .oled-glass {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 45%;
+      background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, transparent 100%);
+      pointer-events: none;
+    }
+
+    .avatar-eyes {
+      display: flex;
+      gap: 32px;
+      margin-bottom: 14px;
+      transition: all 0.3s ease;
+    }
+
+    .eye {
+      width: 32px;
+      height: 44px;
+      background: var(--oled-glow);
+      border-radius: 16px;
+      box-shadow: 0 0 18px var(--oled-glow);
+      transition: all 0.2s ease;
+    }
+
+    .avatar-eyes.blink .eye {
+      height: 4px;
+      margin-top: 20px;
+    }
+
+    .avatar-eyes.happy .eye {
+      border-radius: 16px 16px 0 0;
+      height: 22px;
+    }
+
+    .avatar-eyes.listening .eye {
+      border-radius: 50%;
+      height: 38px;
+      width: 38px;
+      background: #ea4a5a;
+      box-shadow: 0 0 20px #ea4a5a;
+      animation: listenPulse 0.7s infinite alternate;
+    }
+
+    @keyframes listenPulse {
+      from { transform: scale(0.9); box-shadow: 0 0 10px #ea4a5a; }
+      to { transform: scale(1.18); box-shadow: 0 0 28px #ea4a5a; }
+    }
+
+    .avatar-eyes.talking .eye {
+      animation: eyeBounce 0.35s infinite alternate;
+    }
+
+    @keyframes eyeBounce {
+      from { transform: scaleY(0.8); }
+      to { transform: scaleY(1.35); }
+    }
+
+    .oled-text {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      color: var(--oled-glow);
+      text-align: center;
+      text-shadow: 0 0 8px rgba(0, 240, 255, 0.6);
+      min-height: 20px;
+    }
+
+    .info-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .info-row {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      background: rgba(255, 255, 255, 0.02);
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .info-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-dim);
+    }
+
+    .info-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      word-break: break-all;
+      color: var(--text-main);
+    }
+
+    .code-box {
+      background: linear-gradient(135deg, rgba(88, 166, 255, 0.12), rgba(137, 87, 229, 0.18));
+      border: 1px solid var(--accent);
+      border-radius: 12px;
+      padding: 14px;
+      text-align: center;
+    }
+
+    .code-box-title {
+      font-size: 12px;
+      color: var(--accent);
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .code-digits {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: 6px;
+      color: #fff;
+      text-shadow: 0 0 12px var(--accent);
+    }
+
+    .btn-console {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: #238636;
+      color: #fff;
+      text-decoration: none;
+      padding: 11px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      transition: background 0.2s;
+    }
+
+    .btn-console:hover {
+      background: #2ea043;
+    }
+
+    /* Chat Section */
+    .chat-container {
+      height: 580px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .chat-messages::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .chat-messages::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+    }
+
+    .msg-bubble {
+      max-width: 85%;
+      padding: 12px 16px;
+      border-radius: 14px;
+      font-size: 14px;
+      line-height: 1.5;
+      animation: fadeIn 0.2s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .msg-user {
+      align-self: flex-end;
+      background: #1f6feb;
+      color: #ffffff;
+      border-bottom-right-radius: 2px;
+    }
+
+    .msg-ai {
+      align-self: flex-start;
+      background: #21262d;
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      border-bottom-left-radius: 2px;
+    }
+
+    .msg-system {
+      align-self: center;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 12px;
+      color: var(--text-dim);
+      padding: 6px 14px;
+      border-radius: 20px;
+    }
+
+    .chat-input-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 12px;
+      align-items: center;
+    }
+
+    .chat-input {
+      flex: 1;
+      background: #0d1117;
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 12px 16px;
+      color: var(--text-main);
+      font-family: inherit;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .chat-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent-glow);
+    }
+
+    .btn {
+      cursor: pointer;
+      border: none;
+      outline: none;
+      border-radius: 10px;
+      padding: 11px 16px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #0d1117;
+    }
+
+    .btn-primary:hover {
+      background: #79b8ff;
+    }
+
+    .btn-secondary {
+      background: #21262d;
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+    }
+
+    .btn-secondary:hover {
+      background: #30363d;
+    }
+
+    .btn-danger {
+      background: rgba(248, 81, 73, 0.15);
+      color: var(--danger);
+      border: 1px solid var(--danger);
+    }
+
+    .btn-danger:hover {
+      background: var(--danger);
+      color: #fff;
+    }
+
+    /* Microphone Button */
+    .btn-mic {
+      background: #21262d;
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      width: 44px;
+      height: 44px;
+      padding: 0;
+      border-radius: 10px;
+      font-size: 18px;
+      position: relative;
+    }
+
+    .btn-mic:hover {
+      background: #30363d;
+    }
+
+    .btn-mic.recording {
+      background: var(--mic-active);
+      color: #fff;
+      border-color: var(--mic-active);
+      box-shadow: 0 0 16px rgba(234, 74, 90, 0.6);
+      animation: micPulse 1s infinite alternate;
+    }
+
+    @keyframes micPulse {
+      from { transform: scale(1); }
+      to { transform: scale(1.08); }
+    }
+
+    .quick-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .action-group {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .options-group {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .lang-select {
+      background: #0d1117;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      color: var(--text-main);
+      padding: 4px 8px;
+      font-size: 12px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .audio-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--accent);
+      background: rgba(88, 166, 255, 0.1);
+      padding: 4px 10px;
+      border-radius: 12px;
+      border: 1px solid rgba(88, 166, 255, 0.2);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <div class="brand">
+        <div class="logo-badge">🤖</div>
+        <div>
+          <h1>XiaoZhi Device Simulator (BATUR)</h1>
+          <p>ESP32 AI Voice Assistant with Real Opus Audio</p>
+        </div>
+      </div>
+      <div class="status-badge" id="statusBadge">
+        <span class="status-dot connecting" id="statusDot"></span>
+        <span id="statusText">Connecting...</span>
+      </div>
+    </header>
+
+    <div class="main-grid">
+      <!-- Left Column: Hardware & Activation -->
+      <div class="card">
+        <!-- OLED Screen -->
+        <div class="device-screen-box">
+          <div class="oled-glass"></div>
+          <div class="avatar-eyes" id="avatarEyes">
+            <div class="eye"></div>
+            <div class="eye"></div>
+          </div>
+          <div class="oled-text" id="oledText">XIAOZHI AI IDLE</div>
+        </div>
+
+        <!-- 6 Digit Activation Code -->
+        <div class="code-box">
+          <div class="code-box-title">🔑 KODE AKTIVASI DEVICE</div>
+          <div class="code-digits" id="codeDigits">------</div>
+        </div>
+
+        <a href="https://xiaozhi.me/" target="_blank" class="btn-console">
+          🔗 Buka Console xiaozhi.me & Pair
+        </a>
+
+        <!-- Device Info -->
+        <div class="info-list">
+          <div class="info-row">
+            <span class="info-label">MAC Address (Device ID)</span>
+            <span class="info-val" id="infoMac">Loading...</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Client ID (UUID)</span>
+            <span class="info-val" id="infoClientId">Loading...</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Session ID</span>
+            <span class="info-val" id="infoSessionId">None</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Chat & Interaction -->
+      <div class="card chat-container">
+        <div class="quick-actions">
+          <div class="action-group">
+            <button class="btn btn-secondary" onclick="sendWakeWord()">🔔 Wake Up ("Xiao Zhi")</button>
+            <button class="btn btn-danger" onclick="sendAbort()">🛑 Stop / Abort</button>
+            <button class="btn btn-secondary" onclick="reconnectWS()">🔄 Reconnect</button>
+          </div>
+          <div class="options-group">
+            <span class="audio-badge">🔊 Suara Asli XiaoZhi</span>
+            <select id="micLangSelect" class="lang-select" title="Pilih Bahasa Audio">
+              <option value="id" selected>🇮🇩 ID</option>
+              <option value="en">🇺🇸 EN</option>
+              <option value="zh">🇨🇳 ZH</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="chat-messages" id="chatMessages">
+          <div class="msg-bubble msg-system">
+            👋 Selamat datang! Klik tombol mikrofon <b>🎙️ untuk bicara langsung lewat Mic PC</b> atau ketik pertanyaan di kotak chat.
+          </div>
+        </div>
+
+        <div class="chat-input-row">
+          <button id="btnMic" class="btn btn-mic" onclick="toggleMicrophone()" title="Klik untuk berbicara lewat mic PC">
+            🎙️
+          </button>
+          <input type="text" id="chatInput" class="chat-input" placeholder="Ketik atau klik tombol Mic untuk bicara..." onkeypress="handleKeyPress(event)">
+          <button id="btnSend" class="btn btn-primary" onclick="sendMessage()">Kirim</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let ws = null;
+    let config = null;
+    let currentSessionId = null;
+    let ttsTimer = null;
+    let currentAiBubble = null;
+
+    // Web Audio Variables for Real Opus Playback (24kHz Mono)
+    let playCtx = null;
+    let nextPlayTime = 0;
+
+    // Web Audio Variables for Mic Recording (16kHz Mono PCM)
+    let micCtx = null;
+    let micStream = null;
+    let micProcessor = null;
+    let isRecording = false;
+
+    const statusBadge = document.getElementById('statusBadge');
+    const statusDot = document.getElementById('statusDot');
+    const statusText = document.getElementById('statusText');
+    const oledText = document.getElementById('oledText');
+    const avatarEyes = document.getElementById('avatarEyes');
+    const codeDigits = document.getElementById('codeDigits');
+    const infoMac = document.getElementById('infoMac');
+    const infoClientId = document.getElementById('infoClientId');
+    const infoSessionId = document.getElementById('infoSessionId');
+    const chatMessages = document.getElementById('chatMessages');
+    const chatInput = document.getElementById('chatInput');
+    const btnSend = document.getElementById('btnSend');
+    const btnMic = document.getElementById('btnMic');
+    const micLangSelect = document.getElementById('micLangSelect');
+
+    // Inisialisasi Audio Context untuk Playback Suara Asli XiaoZhi
+    function initPlaybackAudio() {
+      if (!playCtx) {
+        playCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
+        nextPlayTime = playCtx.currentTime;
+      }
+      if (playCtx.state === 'suspended') {
+        playCtx.resume();
+      }
+    }
+
+    // Memutar potongan PCM biner (24kHz 16-bit Int16) asli dari server XiaoZhi
+    function playPCMChunk(arrayBuffer) {
+      initPlaybackAudio();
+
+      const int16 = new Int16Array(arrayBuffer);
+      const float32 = new Float32Array(int16.length);
+      for (let i = 0; i < int16.length; i++) {
+        float32[i] = int16[i] / 32768.0;
+      }
+
+      const audioBuffer = playCtx.createBuffer(1, float32.length, 24000);
+      audioBuffer.getChannelData(0).set(float32);
+
+      const source = playCtx.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(playCtx.destination);
+
+      const now = playCtx.currentTime;
+      const startTime = Math.max(now, nextPlayTime);
+      source.start(startTime);
+      nextPlayTime = startTime + audioBuffer.duration;
+
+      setScreenEmotion('talking', 'SPEAKING...');
+      clearTimeout(ttsTimer);
+      ttsTimer = setTimeout(() => {
+        setScreenEmotion('', 'IDLE');
+      }, 1000);
+    }
+
+    // Mengaktifkan Mikrofon PC dan Streaming 16kHz PCM ke WebSocket
+    async function toggleMicrophone() {
+      initPlaybackAudio();
+
+      if (isRecording) {
+        stopMicrophone();
+      } else {
+        await startMicrophone();
+      }
+    }
+
+    async function startMicrophone() {
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        showSystemMsg('⚠️ WebSocket belum terhubung.');
+        return;
+      }
+
+      try {
+        micStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            sampleRate: 16000,
+            channelCount: 1,
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          }
+        });
+
+        micCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+        const source = micCtx.createMediaStreamSource(micStream);
+        micProcessor = micCtx.createScriptProcessor(2048, 1, 1);
+
+        isRecording = true;
+        btnMic.classList.add('recording');
+        btnMic.innerText = '🔴';
+        setScreenEmotion('listening', 'MENDENGARKAN...');
+        chatInput.placeholder = 'Sedang mendengarkan suara Anda... (Klik mic lagi untuk selesai)';
+
+        // 1. Kirim sinyal start listening
+        ws.send(JSON.stringify({ type: 'abort', session_id: currentSessionId }));
+        ws.send(JSON.stringify({ type: 'listen', state: 'detect', text: 'xiaozhi' }));
+        setTimeout(() => {
+          ws.send(JSON.stringify({ type: 'listen', state: 'start', mode: 'manual' }));
+        }, 100);
+
+        micProcessor.onaudioprocess = (e) => {
+          if (!isRecording) return;
+          const float32 = e.inputBuffer.getChannelData(0);
+          const int16 = new Int16Array(float32.length);
+          for (let i = 0; i < float32.length; i++) {
+            const s = Math.max(-1, Math.min(1, float32[i]));
+            int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+          }
+          // Kirim binary PCM 16kHz ke server
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(int16.buffer);
+          }
+        };
+
+        source.connect(micProcessor);
+        micProcessor.connect(micCtx.destination);
+
+      } catch (err) {
+        console.error('Mic Error:', err);
+        showSystemMsg('❌ Gagal mengakses mikrofon: ' + err.message);
+        stopMicrophone();
+      }
+    }
+
+    function stopMicrophone() {
+      if (!isRecording) return;
+      isRecording = false;
+      btnMic.classList.remove('recording');
+      btnMic.innerText = '🎙️';
+      chatInput.placeholder = 'Ketik atau klik tombol Mic untuk bicara...';
+
+      if (micProcessor) {
+        micProcessor.disconnect();
+        micProcessor = null;
+      }
+      if (micStream) {
+        micStream.getTracks().forEach(t => t.stop());
+        micStream = null;
+      }
+      if (micCtx) {
+        micCtx.close();
+        micCtx = null;
+      }
+
+      setScreenEmotion('', 'MEMPROSES...');
+
+      // 2. Kirim sinyal stop listening ke XiaoZhi
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'listen', state: 'stop' }));
+      }
+    }
+
+    // Fetch config
+    async function loadConfig() {
+      try {
+        const res = await fetch('/api/config');
+        if (res.ok) {
+          config = await res.json();
+          infoMac.innerText = config.mac_address || '-';
+          infoClientId.innerText = config.client_id || '-';
+          codeDigits.innerText = config.activation_code || '------';
+          oledText.innerText = `CODE: ${config.activation_code || 'READY'}`;
+          connectLocalWebSocket();
+        } else {
+          showSystemMsg('⚠️ config.json belum ada. Silakan jalankan `npm run init` terlebih dahulu.');
+        }
+      } catch (e) {
+        showSystemMsg('❌ Gagal memuat konfigurasi: ' + e.message);
+      }
+    }
+
+    function setScreenEmotion(emotion, text) {
+      avatarEyes.className = 'avatar-eyes ' + (emotion || '');
+      if (text) oledText.innerText = text.toUpperCase();
+    }
+
+    // Auto blink
+    setInterval(() => {
+      if (!avatarEyes.classList.contains('talking') && !avatarEyes.classList.contains('listening')) {
+        avatarEyes.classList.add('blink');
+        setTimeout(() => avatarEyes.classList.remove('blink'), 200);
+      }
+    }, 4000);
+
+    function connectLocalWebSocket() {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const localWsUrl = `${protocol}//${window.location.host}`;
+
+      statusDot.className = 'status-dot connecting';
+      statusText.innerText = 'Connecting...';
+      setScreenEmotion('', 'CONNECTING...');
+
+      ws = new WebSocket(localWsUrl);
+      ws.binaryType = 'arraybuffer';
+
+      ws.onopen = () => {
+        statusDot.className = 'status-dot connected';
+        statusText.innerText = 'Connected';
+        setScreenEmotion('happy', 'ONLINE');
+      };
+
+      ws.onmessage = async (event) => {
+        let rawData = event.data;
+
+        // Data biner adalah PCM 24kHz yang sudah di-decode dari Opus XiaoZhi!
+        if (rawData instanceof ArrayBuffer) {
+          playPCMChunk(rawData);
+          return;
+        }
+
+        if (rawData instanceof Blob) {
+          const ab = await rawData.arrayBuffer();
+          playPCMChunk(ab);
+          return;
+        }
+
+        // Data JSON Text
+        if (typeof rawData === 'string') {
+          try {
+            const msg = JSON.parse(rawData);
+            handleMessage(msg);
+          } catch (e) {
+            console.log('[Raw WS Text]:', rawData);
+          }
+        }
+      };
+
+      ws.onerror = (err) => {
+        statusDot.className = 'status-dot disconnected';
+        statusText.innerText = 'Error';
+        setScreenEmotion('', 'ERROR');
+      };
+
+      ws.onclose = () => {
+        statusDot.className = 'status-dot disconnected';
+        statusText.innerText = 'Disconnected';
+        setScreenEmotion('', 'DISCONNECTED');
+        setTimeout(connectLocalWebSocket, 4000);
+      };
+    }
+
+    function handleMessage(msg) {
+      console.log('📥 [Parsed Server Message]:', msg);
+
+      switch (msg.type) {
+        case 'proxy_connected':
+          showSystemMsg('🔗 ' + msg.message);
+          break;
+
+        case 'hello':
+          currentSessionId = msg.session_id;
+          infoSessionId.innerText = currentSessionId || '-';
+          showSystemMsg(`🎉 Terhubung ke XiaoZhi! Session ID: ${currentSessionId}`);
+          setScreenEmotion('happy', 'XIAOZHI READY');
+          break;
+
+        case 'stt':
+          if (msg.text) {
+            appendMessage('user', msg.text);
+          }
+          setScreenEmotion('', 'THINKING...');
+          break;
+
+        case 'llm':
+          if (msg.text) {
+            if (!currentAiBubble) {
+              currentAiBubble = appendMessage('ai', msg.text);
+            } else {
+              currentAiBubble.innerText += msg.text;
+              chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+            setScreenEmotion(msg.emotion || 'happy', msg.text.slice(0, 16));
+          }
+          break;
+
+        case 'tts':
+          if (msg.state === 'start') {
+            currentAiBubble = null;
+            nextPlayTime = playCtx ? playCtx.currentTime : 0;
+            setScreenEmotion('talking', 'SPEAKING...');
+          } else if (msg.state === 'sentence_start' && msg.text) {
+            if (!currentAiBubble) {
+              currentAiBubble = appendMessage('ai', msg.text);
+            } else {
+              currentAiBubble.innerText = msg.text;
+              chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+            setScreenEmotion('talking', msg.text.slice(0, 16));
+          } else if (msg.state === 'stop') {
+            currentAiBubble = null;
+            setScreenEmotion('', 'IDLE');
+          }
+          break;
+
+        case 'alert':
+          showSystemMsg(`⚠️ [${msg.status || 'ALERT'}]: ${msg.message}`);
+          setScreenEmotion('', 'ALERT');
+          break;
+
+        case 'mcp':
+          showSystemMsg(`🛠️ Tool Call: ${JSON.stringify(msg)}`);
+          break;
+      }
+    }
+
+    function appendMessage(sender, text) {
+      const bubble = document.createElement('div');
+      bubble.className = `msg-bubble msg-${sender}`;
+      bubble.innerText = text;
+      chatMessages.appendChild(bubble);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+      return bubble;
+    }
+
+    function showSystemMsg(text) {
+      const bubble = document.createElement('div');
+      bubble.className = 'msg-bubble msg-system';
+      bubble.innerText = text;
+      chatMessages.appendChild(bubble);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    // Mengirim Pertanyaan Teks dengan Mengubahnya Menjadi Aliran Audio Voice Stream
+    async function sendMessage() {
+      initPlaybackAudio();
+
+      const text = chatInput.value.trim();
+      if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
+
+      appendMessage('user', text);
+      chatInput.value = '';
+      currentAiBubble = null;
+
+      setScreenEmotion('listening', 'MENGIRIM...');
+      btnSend.disabled = true;
+
+      try {
+        // 1. Fetch TTS Audio untuk teks pertanyaan
+        const lang = micLangSelect.value || 'id';
+        const res = await fetch(`/api/tts?text=${encodeURIComponent(text)}&lang=${lang}`);
+        if (!res.ok) throw new Error('TTS Proxy failed');
+
+        const arrayBuffer = await res.arrayBuffer();
+
+        // 2. Decode audio ke PCM 16kHz
+        const tempCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+        const audioBuffer = await tempCtx.decodeAudioData(arrayBuffer);
+        const float32 = audioBuffer.getChannelData(0);
+
+        // Convert ke Int16 PCM
+        const int16 = new Int16Array(float32.length);
+        for (let i = 0; i < float32.length; i++) {
+          const s = Math.max(-1, Math.min(1, float32[i]));
+          int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+        }
+
+        // 3. Kirimkan sinyal start listening ke XiaoZhi
+        ws.send(JSON.stringify({ type: 'abort', session_id: currentSessionId }));
+        ws.send(JSON.stringify({ type: 'listen', state: 'detect', text: 'xiaozhi' }));
+
+        await new Promise(r => setTimeout(r, 120));
+        ws.send(JSON.stringify({ type: 'listen', state: 'start', mode: 'manual' }));
+
+        // 4. Alirkan potongan audio PCM 16kHz (per 960 sample = 1920 byte = 60ms)
+        const CHUNK_SIZE = 1920;
+        const pcmBytes = new Uint8Array(int16.buffer);
+
+        for (let offset = 0; offset < pcmBytes.length; offset += CHUNK_SIZE) {
+          const chunk = pcmBytes.subarray(offset, Math.min(offset + CHUNK_SIZE, pcmBytes.length));
+          ws.send(chunk.buffer);
+          // Beri sedikit jeda sesuai durasi audio agar streaming natural
+          await new Promise(r => setTimeout(r, 55));
+        }
+
+        // 5. Kirimkan sinyal stop listening
+        await new Promise(r => setTimeout(r, 100));
+        ws.send(JSON.stringify({ type: 'listen', state: 'stop' }));
+        setScreenEmotion('', 'BERPIKIR...');
+
+        tempCtx.close();
+      } catch (err) {
+        console.error('Send Error:', err);
+        showSystemMsg('❌ Gagal mengirim audio pertanyaan: ' + err.message);
+      } finally {
+        btnSend.disabled = false;
+      }
+    }
+
+    function sendWakeWord() {
+      initPlaybackAudio();
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        showSystemMsg('🔔 Mengirim Wake Word "Xiao Zhi"...');
+        setScreenEmotion('happy', 'WAKE UP');
+        currentAiBubble = null;
+        ws.send(JSON.stringify({ type: 'listen', state: 'detect', text: 'xiaozhi' }));
+      }
+    }
+
+    function sendAbort() {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        if (playCtx) nextPlayTime = playCtx.currentTime;
+        showSystemMsg('🛑 Mengirim sinyal Abort / Interruption...');
+        setScreenEmotion('', 'ABORTED');
+        currentAiBubble = null;
+        ws.send(JSON.stringify({ type: 'abort', session_id: currentSessionId }));
+      }
+    }
+
+    function reconnectWS() {
+      if (ws) ws.close();
+      connectLocalWebSocket();
+    }
+
+    function handleKeyPress(e) {
+      if (e.key === 'Enter') sendMessage();
+    }
+
+    // Init
+    loadConfig();
+  </script>
+</body>
+</html>

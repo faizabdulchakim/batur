@@ -1,0 +1,22 @@
+{
+  "mac_address": "24:dc:c3:c3:18:90",
+  "client_id": "7f556e28-5d0e-4d94-9929-04ff0ed196f7",
+  "firmware_version": "1.0.0",
+  "board_type": "esp32-s3-box",
+  "activation_code": "705251",
+  "ws_url": "wss://api.tenclass.net/xiaozhi/v1/",
+  "ws_token": "test-token",
+  "mqtt": {
+    "endpoint": "api.tenclass.net",
+    "client_id": "GID_test@@@24_dc_c3_c3_18_90@@@7f556e28-5d0e-4d94-9929-04ff0ed196f7",
+    "username": "eyJpcCI6IjExNC4xMjIuMTQzLjgwIiwiYyI6MH0=",
+    "password": "O/EwGoaJqs0CC4w3RorGAwejY40rVnuwYDmWboKXzbo=",
+    "publish_topic": "device-server",
+    "subscribe_topic": "null"
+  },
+  "server_time": {
+    "timestamp": 1788338731547,
+    "timezone_offset": 480
+  },
+  "last_sync": "2026-09-02T08:45:32.126Z"
+}
