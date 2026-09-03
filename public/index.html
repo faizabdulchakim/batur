@@ -773,6 +773,7 @@
           cameraDistance: 0.65,
           cameraY: 0.05,
           cameraRotateSpeed: 0.5,
+          lipsyncModules: ['en', 'fi', 'de'],
           markedOptions: { mangle: false, headerIds: false }
         });
 
@@ -865,15 +866,27 @@
 
         // Hitung durasi waktu alami per kata (kecepatan bicara manusia ~80ms per karakter)
         for (const w of rawWords) {
-          const dur = Math.max(200, Math.min(600, w.length * 85));
+          const dur = Math.max(220, Math.min(650, w.length * 85));
           words.push(w);
           wtimes.push(curTime);
           wdurations.push(dur);
           curTime += dur + 35; // jeda halus antar kata
         }
 
+        const totalDurationMs = curTime + 200;
+        const sampleRate = (head.audioCtx && head.audioCtx.sampleRate) || 24000;
+        
+        // Buat silent audio buffer agar queue internal TalkingHead aktif
+        let silentBuffer = null;
+        if (head.audioCtx) {
+          try {
+            silentBuffer = head.audioCtx.createBuffer(1, Math.max(100, Math.floor(totalDurationMs * sampleRate / 1000)), sampleRate);
+          } catch(e) {}
+        }
+
         // Jalankan engine animasi kurva Hermite TalkingHead yang sangat halus & natural!
         head.speakAudio({
+          audio: silentBuffer,
           words: words,
           wtimes: wtimes,
           wdurations: wdurations
@@ -882,6 +895,7 @@
           lipsyncLang: 'en'
         });
 
+        console.log('🗣️ [Native TalkingHead LipSync Active]:', words.join(' '));
       } catch (err) {
         console.warn('Native lip-sync error:', err);
       }
